@@ -21,17 +21,40 @@ export default function PrivateGate() {
     setLoading(true);
     setError("");
 
+
+    const requestId = crypto.randomUUID();
+
+    console.info(`[LOGIN:${requestId}] Submit started`);
+
     try {
+      console.info(`[LOGIN:${requestId}] Sending verification request`);
+
       const response = await axios.post(
         "/api/auth/verify",
         { secretCode },
         { withCredentials: true }
       );
 
-      if (response.status === 200) {
+      console.info(`[LOGIN:${requestId}] Verification response`, {
+        status: response.status,
+        success: response.data?.success,
+      });
+
+      if (response.status === 200 && response.data?.success) {
+        console.info(`[LOGIN:${requestId}] Navigating to dashboard`);
         router.replace("/dashboard");
+      } else {
+        console.warn(`[LOGIN:${requestId}] Verification was not successful`);
+        setError(response.data?.message || "Verification failed.");
       }
     } catch (error) {
+      console.error(`[LOGIN:${requestId}] Verification request failed`, {
+        message: error.message,
+        status: error.response?.status,
+        code: error.code,
+        endpoint: "/api/auth/verify",
+      });
+
       setError(
         error.response?.data?.message ||
         "Unable to connect. Please try again."
@@ -40,6 +63,7 @@ export default function PrivateGate() {
       setLoading(false);
     }
   }
+
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-[#f7faf7] px-4">
