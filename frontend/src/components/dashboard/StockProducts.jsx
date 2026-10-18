@@ -24,6 +24,13 @@ const displayDate = date => {
   return `${day}-${month}-${year}`;
 };
 
+const capitalizeProductName = name =>
+  String(name ?? '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, char => char.toUpperCase());
+
 export default function StockProducts() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +40,7 @@ export default function StockProducts() {
   const [editing, setEditing] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [editDate, setEditDate] = useState('');
+  const [editPrice, setEditPrice] = useState('');
   const [editQuantity, setEditQuantity] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -96,6 +104,9 @@ export default function StockProducts() {
         setEditing(product);
         setEditDate(product.date || '');
         setEditQuantity(product.quantity || '');
+        setEditPrice(
+          product.price == null ? '' : String(product.price)
+        );
       } else {
         localStorage.removeItem(modalStorageKey);
       }
@@ -108,6 +119,9 @@ export default function StockProducts() {
     setEditing(product);
     setEditDate(product.date || '');
     setEditQuantity(product.quantity || '');
+    setEditPrice(
+      product.price == null ? '' : String(product.price)
+    );
     try {
       localStorage.setItem(modalStorageKey, product._id);
     } catch { }
@@ -133,6 +147,31 @@ export default function StockProducts() {
       return;
     }
 
+    const normalizeName = name =>
+      String(name ?? '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLowerCase();
+
+    const enteredName = normalizeName(form.productName);
+
+    if (!enteredName) {
+      showWarning('Product name dia.');
+      return;
+    }
+
+    const duplicate = products.some(
+      product =>
+        normalizeName(product.productName) === enteredName
+    );
+
+    if (duplicate) {
+      showWarning(
+        `"${form.productName.trim()}" product already achhi. Puni add karipariba nahi.`
+      );
+      return;
+    }
+
     setSaving(true);
     setMessage('');
     setError('');
@@ -142,6 +181,7 @@ export default function StockProducts() {
         method: 'POST',
         body: JSON.stringify({
           ...form,
+          productName: capitalizeProductName(form.productName),
           price: form.price.trim() === '' ? '' : Number(form.price)
         })
       });
@@ -165,18 +205,35 @@ export default function StockProducts() {
   async function saveEdit(event) {
     event.preventDefault();
     if (!editing || saving) return;
+
     setSaving(true);
     setError('');
     setMessage('');
 
     try {
-      const result = await request(`/api/stock-products/${editing._id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ date: editDate, quantity: editQuantity })
-      });
-      setProducts(previous =>
-        previous.map(item => item._id === editing._id ? result.product : item)
+      const payload = {
+        date: editDate,
+        quantity: editQuantity
+      };
+
+      if (editing.category === 'Permanent Stock') {
+        payload.price = editPrice;
+      }
+
+      const result = await request(
+        `/api/stock-products/${editing._id}`,
+        {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        }
       );
+
+      setProducts(previous =>
+        previous.map(item =>
+          item._id === editing._id ? result.product : item
+        )
+      );
+
       closeEdit();
       showSuccess('Stock product updated successfully.');
     } catch (err) {
@@ -222,14 +279,14 @@ export default function StockProducts() {
   const permanentColumns = [
     { key: 'serial', label: 'Sl. No.', render: (_, index) => index + 1 },
     { key: 'date', label: 'Date', render: row => displayDate(row.date) },
-    { key: 'productName', label: 'Product Name' },
+    { key: 'productName', label: 'Product Name', render: row => capitalizeProductName(row.productName) },
     { key: 'quantity', label: 'Quantity', render: row => row.quantity || '—' },
     { key: 'price', label: 'Price', render: row => money(row.price) }
   ];
 
   const stockColumns = [
     { key: 'serial', label: 'Sl. No.', render: (_, index) => index + 1 },
-    { key: 'productName', label: 'Product Name' },
+    { key: 'productName', label: 'Product Name', render: row => capitalizeProductName(row.productName) },
     { key: 'quantity', label: 'Quantity', render: row => row.quantity || '—' },
     { key: 'date', label: 'Date', render: row => displayDate(row.date) }
   ];
@@ -354,15 +411,26 @@ export default function StockProducts() {
               data={permanentProducts}
               getRowKey={row => row._id}
               emptyMessage="No permanent stock products saved."
+
               renderActions={row => (
-                <button
-                  type="button"
-                  onClick={() => setDeleteTarget(row)}
-                  className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
-                >
-                  Delete
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openEdit(row)}
+                    className="rounded-lg border border-[#D8E5D8] px-3 py-2 text-sm font-semibold text-[#176B45] hover:bg-[#F1F7F0]"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteTarget(row)}
+                    className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+                  >
+                    Delete
+                  </button>
+                </div>
               )}
+
             />
           )}
         </section>
@@ -400,6 +468,21 @@ export default function StockProducts() {
           <form onSubmit={saveEdit} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             <h2 className="text-xl font-bold text-[#174D35]">Edit Stock Product</h2>
             <p className="mt-1 text-sm text-[#52715D]">{editing.productName}</p>
+
+            {editing.category === 'Permanent Stock' && (
+              <label className="mt-4 block text-sm font-medium text-[#52715D]">
+                Price
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editPrice}
+                  onChange={e => setEditPrice(e.target.value)}
+                  required
+                  className="mt-2 w-full rounded-xl border border-[#D8E5D8] px-4 py-3 text-[#174D35] outline-none focus:border-[#176B45]"
+                />
+              </label>
+            )}
 
             <label className="mt-5 block text-sm font-medium">
               Quantity

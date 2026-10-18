@@ -3,6 +3,9 @@ const StockProduct = require('../models/StockProduct');
 const requireAuth = require('../middleware/requireAuth');
 
 const router = express.Router();
+
+const normalizeProductName = name => String(name ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+
 router.use(requireAuth);
 
 const validDate = date => {
@@ -34,6 +37,23 @@ router.post('/', async (req, res) => {
     }
     if (!['Permanent Stock', 'Stock Products'].includes(category)) {
       return res.status(400).json({ success: false, message: 'Category select kara.' });
+    }
+
+    const normalizedName = normalizeProductName(productName);
+
+    const existingProducts = await StockProduct.find({})
+      .select('_id productName')
+      .lean();
+
+    const duplicate = existingProducts.some(
+      item => normalizeProductName(item.productName) === normalizedName
+    );
+
+    if (duplicate) {
+      return res.status(409).json({
+        success: false,
+        message: `"${productName.trim()}" product already achhi. Duplicate product save heipariba nahi. Existing product ku edit kara.`
+      });
     }
 
     const quantityText = String(quantity ?? '').trim();

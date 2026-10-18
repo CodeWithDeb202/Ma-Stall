@@ -33,6 +33,7 @@ const formatMonth = (month) => {
 
 export default function DailyBuyingProductList() {
   const [products, setProducts] = useState([]);
+  const [stockProducts, setStockProducts] = useState([]);
   const [dailyRecords, setDailyRecords] = useState([]);
   const [entryDate, setEntryDate] = useState('');
   const [productName, setProductName] = useState('');
@@ -67,19 +68,25 @@ export default function DailyBuyingProductList() {
       setIsLoading(true);
 
       try {
-        const [productResponse, recordResponse] = await Promise.all([
-          axios.get(`${apiUrl}/api/daily-buying-products`, {
-            withCredentials: true,
-            timeout: 15000,
-          }),
-          axios.get(`${apiUrl}/api/records`, {
-            withCredentials: true,
-            timeout: 15000,
-          }),
-        ]);
+        const [productResponse, recordResponse, stockResponse] =
+          await Promise.all([
+            axios.get(`${apiUrl}/api/daily-buying-products`, {
+              withCredentials: true,
+              timeout: 15000,
+            }),
+            axios.get(`${apiUrl}/api/records`, {
+              withCredentials: true,
+              timeout: 15000,
+            }),
+            axios.get(`${apiUrl}/api/stock-products`, {
+              withCredentials: true,
+              timeout: 15000,
+            }),
+          ]);
 
         const productResult = productResponse.data;
         const recordResult = recordResponse.data;
+        const stockResult = stockResponse.data;
 
         if (productResponse.status === 401 || recordResponse.status === 401) {
           window.location.replace('/');
@@ -98,13 +105,21 @@ export default function DailyBuyingProductList() {
           );
         }
 
+        if (!stockResult.success) {
+          throw new Error(
+            stockResult.message || 'Stock products load heiparila nahi.'
+          );
+        }
+
         if (cancelled) return;
 
         const loadedProducts = productResult.products || [];
         const loadedRecords = recordResult.records || [];
+        const loadedStockProducts = stockResult.products || [];
 
         setProducts(loadedProducts);
         setDailyRecords(loadedRecords);
+        setStockProducts(loadedStockProducts);
 
         if (loadedProducts.length > 0) {
           const latestDate = loadedProducts
@@ -275,7 +290,18 @@ export default function DailyBuyingProductList() {
     Number(selectedDailyRecord.cash || 0)
     : 0;
 
-  const profitAfterExpenses = totalProfit - totalExpense;
+  const permanentStockExpense = stockProducts
+    .filter(
+      item =>
+        item.category === 'Permanent Stock' &&
+        item.date === selectedDate
+    )
+    .reduce(
+      (total, item) => total + (Number(item.price) || 0),
+      0
+    );
+
+  const profitAfterExpenses = totalProfit - totalExpense - permanentStockExpense;
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -617,6 +643,10 @@ export default function DailyBuyingProductList() {
         <section className="overflow-hidden rounded-2xl border border-[#D8E5D8] bg-white shadow-sm">
           <div className="border-b border-[#D8E5D8] px-5 py-4">
             <h2 className="font-semibold text-[#174D35]">Daily Summary</h2>
+            <p className="text-sm text-[#52715D]">
+              Profit After Expenses = Total Profit − Daily Buying Expenses −
+              Same-Date Permanent Stock Purchases.
+            </p>
             <p className="mt-1 text-sm text-[#52715D]">
               {selectedDate
                 ? `Summary for ${formatDate(selectedDate)}`
