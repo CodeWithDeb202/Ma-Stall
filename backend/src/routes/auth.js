@@ -37,10 +37,12 @@ router.post('/verify', (req, res) => {
     .digest('hex');
   const token = `${issuedAt}.${nonce}.${signature}`;
 
+  const isProduction = process.env.NODE_ENV === 'production';
+
   res.cookie('ma_stall_session', token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
     maxAge: 8 * 60 * 60 * 1000,
     path: '/',
   });

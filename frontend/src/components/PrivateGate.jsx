@@ -1,65 +1,136 @@
-'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import axios from "axios";
 
 export default function PrivateGate() {
-  const [secretCode, setSecretCode] = useState('');
-  const [isChecking, setIsChecking] = useState(false);
+  const [secretCode, setSecretCode] = useState("");
+  const [showSecret, setShowSecret] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
   const router = useRouter();
 
-  async function verifyAccess(value) {
-    if (!value.trim() || isChecking) return;
+  async function handleSubmit(event) {
+    event.preventDefault();
 
-    setIsChecking(true);
+    if (!secretCode.trim() || loading) return;
+
+    setLoading(true);
+    setError("");
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/auth/verify`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ secretCode: value }),
-        }
+      const response = await axios.post(
+        "/api/auth/verify",
+        { secretCode },
+        { withCredentials: true }
       );
 
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        router.replace('/dashboard');
+      if (response.status === 200) {
+        router.replace("/dashboard");
       }
-    } catch {
-      // Backend connection will be configured next.
+    } catch (error) {
+      setError(
+        error.response?.data?.message ||
+        "Unable to connect. Please try again."
+      );
     } finally {
-      setIsChecking(false);
+      setLoading(false);
     }
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#F8FBF7] px-5">
-      <section className="w-full max-w-sm">
-        <h1 className="mb-10 text-center text-2xl font-semibold tracking-tight text-[#174D35] sm:text-3xl">
+    <main className="min-h-screen flex items-center justify-center bg-[#f7faf7] px-4">
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-md flex flex-col items-center gap-6"
+      >
+        <h1 className="text-2xl sm:text-3xl font-bold text-[#174D35] text-center">
           This is Private Website
         </h1>
 
-        <input
-          aria-label="Secret code"
-          type="password"
-          autoComplete="off"
-          value={secretCode}
-          onChange={(event) => {
-            const value = event.target.value;
-            setSecretCode(value);
+        <div className="w-full">
+          <label htmlFor="secretCode" className="sr-only">
+            Secret code
+          </label>
 
-            if (value.trim()) {
-              verifyAccess(value);
-            }
-          }}
-          placeholder=" "
-          className="h-12 w-full rounded-xl border border-[#D8E5D8] bg-white px-4 text-[#174D35] outline-none transition focus:border-[#28784F] focus:ring-2 focus:ring-[#28784F]/15"
-        />
-      </section>
+          <div className="flex items-center w-full rounded-xl border border-[#174D35] bg-white shadow-sm focus-within:ring-2 focus-within:ring-[#174D35]/20">
+            <input
+              id="secretCode"
+              type={showSecret ? "text" : "password"}
+              value={secretCode}
+              onChange={(event) => {
+                setSecretCode(event.target.value);
+                setError("");
+              }}
+              placeholder="Enter secret code"
+              autoComplete="current-password"
+              required
+              className="min-w-0 flex-1 rounded-l-xl bg-transparent px-4 py-4 text-gray-900 outline-none"
+            />
+
+            <button
+              type="button"
+              onClick={() => setShowSecret((previous) => !previous)}
+              aria-label={showSecret ? "Hide secret code" : "Show secret code"}
+              title={showSecret ? "Hide secret code" : "Show secret code"}
+              className="px-4 py-3 text-[#174D35] hover:text-[#26764f]"
+            >
+              {showSecret ? (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M3 3l18 18" />
+                  <path d="M10.6 10.6a2 2 0 002.8 2.8" />
+                  <path d="M9.9 5.2A11 11 0 0112 5c5 0 9 4 10 7a11.8 11.8 0 01-3 4.4" />
+                  <path d="M6.2 6.2C3.9 7.5 2.5 9.6 2 12c1 3 5 7 10 7 1.1 0 2.1-.2 3-.5" />
+                </svg>
+              ) : (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              )}
+            </button>
+          </div>
+
+          {error && (
+            <p role="alert" className="mt-3 text-sm text-red-600">
+              {error}
+            </p>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading || !secretCode.trim()}
+          className="w-full rounded-xl bg-[#174D35] px-5 py-3 font-semibold text-white transition hover:bg-[#236747] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {loading ? "Verifying..." : "Submit"}
+        </button>
+      </form>
     </main>
   );
 }

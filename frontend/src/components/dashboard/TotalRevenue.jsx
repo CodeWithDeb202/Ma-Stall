@@ -1,9 +1,10 @@
 'use client';
+import axiosFetch from "@/lib/axios-fetch";
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import DashboardLayout from '../layout/DashboardLayout';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import apiUrl from '@/services/api';
 
 const COLORS = {
   invest: '#DC2626',
@@ -266,11 +267,11 @@ export default function TotalRevenue() {
 
     try {
       const [recordsResponse, productsResponse] = await Promise.all([
-        fetch(`${API}/api/records`, {
+        axiosFetch(`${apiUrl}/api/records`, {
           credentials: 'include',
           cache: 'no-store',
         }),
-        fetch(`${API}/api/daily-buying-products`, {
+        axiosFetch(`${apiUrl}/api/daily-buying-products`, {
           credentials: 'include',
           cache: 'no-store',
         }),
@@ -439,7 +440,7 @@ export default function TotalRevenue() {
 
     async function loadPermanentStock() {
       try {
-        const response = await fetch(`${API}/api/stock-products`, {
+        const response = await axiosFetch(`${apiUrl}/api/stock-products`, {
           credentials: 'include',
           cache: 'no-store',
         });

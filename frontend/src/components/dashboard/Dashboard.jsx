@@ -1,10 +1,14 @@
 'use client';
+import axiosFetch from "@/lib/axios-fetch";
 
 import { useEffect, useState } from 'react';
 import DashboardLayout from '../layout/DashboardLayout';
 import Table from '../reusable/Table';
 import Form from '../reusable/Form';
 import Warning from '../reusable/Warning';
+
+import apiUrl from '@/services/api';
+import { showSuccess, showError, showWarning } from '@/lib/toast';
 
 
 export default function Dashboard() {
@@ -34,12 +38,10 @@ export default function Dashboard() {
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-
     useEffect(() => {
         async function loadRecords() {
             try {
-                const response = await fetch(`${apiUrl}/api/records`, {
+                const response = await axiosFetch(`${apiUrl}/api/records`, {
                     credentials: 'include',
                     cache: 'no-store',
                 });
@@ -64,7 +66,7 @@ export default function Dashboard() {
                     }
                 }
             } catch {
-                setMessage('Records load heiparila nahi.');
+                showError('Records load heiparila nahi. Backend connection check kara.');
             }
         }
 
@@ -125,7 +127,7 @@ export default function Dashboard() {
         setIsEditSaving(true);
         setEditMessage('');
         try {
-            const response = await fetch(
+            const response = await axiosFetch(
                 `${apiUrl}/api/records/${encodeURIComponent(editingRecord.date)}`,
                 {
                     method: 'PUT',
@@ -140,7 +142,7 @@ export default function Dashboard() {
             }
             const result = await response.json();
             if (!response.ok || !result.success) {
-                setEditMessage(result.message || 'Record update heiparila nahi.');
+                showError(result.message || 'Record update heiparila nahi.');
                 return;
             }
             setRecords((previous) =>
@@ -149,9 +151,9 @@ export default function Dashboard() {
                 ).sort((a, b) => b.date.localeCompare(a.date))
             );
             closeEditModal();
-            setMessage('Record update hela.');
+            showSuccess('Record update hela.');
         } catch {
-            setEditMessage('Backend connection check kara.');
+            showError('Backend re connect heiparuni. Internet/server connection check kara.');
         } finally {
             setIsEditSaving(false);
         }
@@ -163,7 +165,7 @@ export default function Dashboard() {
         setMessage('');
 
         try {
-            const response = await fetch(
+            const response = await axiosFetch(
                 `${apiUrl}/api/records/${encodeURIComponent(recordDate)}`,
                 {
                     method: 'DELETE',
@@ -179,7 +181,7 @@ export default function Dashboard() {
             const result = await response.json();
 
             if (!response.ok || !result.success) {
-                setMessage(result.message || 'Record delete heiparila nahi.');
+                showError(result.message || 'Record delete heiparila nahi.');
                 return;
             }
 
@@ -191,9 +193,9 @@ export default function Dashboard() {
                 closeEditModal();
             }
 
-            setMessage(`${recordDate} record delete hela.`);
+            showSuccess(`${recordDate} record delete hela.`);
         } catch {
-            setMessage('Backend connection check kara.');
+            showError('Backend re connect heiparuni. Internet/server connection check kara.');
         } finally {
             setDeletingDate('');
         }
@@ -215,7 +217,7 @@ export default function Dashboard() {
         event.preventDefault();
 
         if (!date || isSaving) {
-            setMessage('Date select kara.');
+            showWarning('Date select kara.');
             return;
         }
 
@@ -225,7 +227,7 @@ export default function Dashboard() {
         if (cash !== '') updates.cash = Number(cash);
 
         if (Object.keys(updates).length === 0) {
-            setMessage('At least one amount enter kara.');
+            showWarning('At least one amount enter kara.');
             return;
         }
 
@@ -233,7 +235,7 @@ export default function Dashboard() {
         setMessage('');
 
         try {
-            const response = await fetch(`${apiUrl}/api/records/${date}`, {
+            const response = await axiosFetch(`${apiUrl}/api/records/${date}`, {
                 method: 'PUT',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
@@ -248,7 +250,7 @@ export default function Dashboard() {
             }
 
             if (!response.ok || !result.success) {
-                setMessage(result.message || 'Record save heiparila nahi.');
+                showError(result.message || 'Record save heiparila nahi.');
                 return;
             }
 
@@ -261,13 +263,13 @@ export default function Dashboard() {
                 );
             });
 
-            setMessage('Record successfully save hela.');
+            showSuccess('Record successfully save hela.');
             setDate('');
             setInvest('');
             setIncome('');
             setCash('');
         } catch {
-            setMessage('Backend connection check kara.');
+            showError('Backend re connect heiparuni. Internet/server connection check kara.');
         } finally {
             setIsSaving(false);
         }

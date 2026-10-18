@@ -1,12 +1,15 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
+
 import Form from '../reusable/Form';
 import Table from '../reusable/Table';
 import Warning from '../reusable/Warning';
 import DashboardLayout from '../layout/DashboardLayout';
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import apiUrl from '@/services/api';
+import { showSuccess, showError, showWarning, getErrorMessage } from '@/lib/toast';
 
 const formatMoney = (amount) =>
   `₹${Number(amount || 0).toLocaleString('en-IN', {
@@ -65,25 +68,23 @@ export default function DailyBuyingProductList() {
 
       try {
         const [productResponse, recordResponse] = await Promise.all([
-          fetch(`${apiUrl}/api/daily-buying-products`, {
-            credentials: 'include',
-            cache: 'no-store',
+          axios.get(`${apiUrl}/api/daily-buying-products`, {
+            withCredentials: true,
+            timeout: 15000,
           }),
-          fetch(`${apiUrl}/api/records`, {
-            credentials: 'include',
-            cache: 'no-store',
+          axios.get(`${apiUrl}/api/records`, {
+            withCredentials: true,
+            timeout: 15000,
           }),
         ]);
+
+        const productResult = productResponse.data;
+        const recordResult = recordResponse.data;
 
         if (productResponse.status === 401 || recordResponse.status === 401) {
           window.location.replace('/');
           return;
         }
-
-        const [productResult, recordResult] = await Promise.all([
-          productResponse.json(),
-          recordResponse.json(),
-        ]);
 
         if (!productResponse.ok || !productResult.success) {
           throw new Error(
@@ -152,17 +153,24 @@ export default function DailyBuyingProductList() {
       }
 
       try {
-        const response = await fetch(
+        const response = await axios.get(
           `${apiUrl}/api/daily-buying-payments?date=${encodeURIComponent(selectedDate)}`,
-          { credentials: 'include', cache: 'no-store' }
+          {
+            withCredentials: true,
+            timeout: 15000,
+          }
         );
 
+        const result = response.data;
+
+        if (!result.success) {
+          throw new Error(result.message || 'Payment status load heiparila nahi.');
+        }
         if (response.status === 401) {
           window.location.replace('/');
           return;
         }
 
-        const result = await response.json();
         if (!response.ok || !result.success) {
           throw new Error(result.message || 'Payment status load heiparila nahi.');
         }
@@ -194,20 +202,26 @@ export default function DailyBuyingProductList() {
     setPaymentError('');
 
     try {
-      const response = await fetch(
-        `${apiUrl}/api/daily-buying-payments/${encodeURIComponent(selectedDate)}/${person}`,
+      const response = await axios.put(
+        `${apiUrl}/api/daily-buying-payments/${encodeURIComponent(selectedDate)}/${encodeURIComponent(person)}`,
+        {},
         {
-          method: 'PUT',
-          credentials: 'include',
+          withCredentials: true,
+          timeout: 15000,
         }
       );
+
+      const result = response.data;
+
+      if (!result.success) {
+        throw new Error(result.message || 'Payment save heiparila nahi.');
+      }
 
       if (response.status === 401) {
         window.location.replace('/');
         return;
       }
 
-      const result = await response.json();
       if (!response.ok || !result.success) {
         throw new Error(result.message || 'Payment save heiparila nahi.');
       }
@@ -268,8 +282,7 @@ export default function DailyBuyingProductList() {
     setMessage('');
 
     if (!entryDate || !productName.trim() || price === '' || quantity === '') {
-      setMessage('Date, product name, price au quantity fill kara.');
-      setMessageType('error');
+      showWarning('Date, product name, price au quantity fill kara.');
       return;
     }
 
@@ -283,32 +296,37 @@ export default function DailyBuyingProductList() {
         Number(quantityText.match(/^\d+(?:\.\d+)?/)[0]) <= 0
       )
     ) {
-      setMessage('Quantity re 250g, 2kg, 1 packet ba 5 pcs emiti lekha.');
-      setMessageType('error');
+      showWarning('Quantity re 250g, 2kg, 1 packet ba 5 pcs emiti lekha.');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`${apiUrl}/api/daily-buying-products`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const response = await axios.post(
+        `${apiUrl}/api/daily-buying-products`,
+        {
           date: entryDate,
           productName: productName.trim(),
           price: numericPrice,
           quantity: quantityText,
-        }),
-      });
+        },
+        {
+          withCredentials: true,
+          timeout: 15000,
+        }
+      );
+
+      const result = response.data;
+
+      if (!result.success) {
+        throw new Error(result.message || 'Product save heiparila nahi.');
+      }
 
       if (response.status === 401) {
         window.location.replace('/');
         return;
       }
-
-      const result = await response.json();
 
       if (!response.ok || !result.success) {
         throw new Error(result.message || 'Product save heiparila nahi.');
@@ -322,11 +340,9 @@ export default function DailyBuyingProductList() {
       setProductName('');
       setPrice('');
       setQuantity('1');
-      setMessage('Product successfully saved.');
-      setMessageType('info');
+      showSuccess('Product successfully saved.');
     } catch (error) {
-      setMessage(error.message || 'Backend connection check kara.');
-      setMessageType('error');
+      showError(getErrorMessage(error, 'Product save heiparila nahi.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -351,26 +367,29 @@ export default function DailyBuyingProductList() {
     setEditMessage('');
 
     try {
-      const response = await fetch(
+      const response = await axios.put(
         `${apiUrl}/api/daily-buying-products/${editingProduct._id}`,
         {
-          method: 'PUT',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            productName: editValues.productName,
-            price: editValues.price === '' ? null : Number(editValues.price),
-            quantity: editValues.quantity,
-          }),
+          productName: editValues.productName,
+          price: editValues.price === '' ? null : Number(editValues.price),
+          quantity: editValues.quantity,
+        },
+        {
+          withCredentials: true,
+          timeout: 15000,
         }
       );
+
+      const result = response.data;
+
+      if (!result.success) {
+        throw new Error(result.message || 'Product update heiparila nahi.');
+      }
 
       if (response.status === 401) {
         window.location.replace('/');
         return;
       }
-
-      const result = await response.json();
 
       if (!response.ok || !result.success) {
         throw new Error(result.message || 'Product update heiparila nahi.');
@@ -382,8 +401,7 @@ export default function DailyBuyingProductList() {
         )
       );
       setEditingProduct(null);
-      setMessage('Product successfully updated.');
-      setMessageType('info');
+      showSuccess('Product successfully updated.');
     } catch (error) {
       setEditMessage(error.message || 'Product update heiparila nahi.');
     } finally {
@@ -397,20 +415,24 @@ export default function DailyBuyingProductList() {
     setIsDeleting(true);
 
     try {
-      const response = await fetch(
+      const response = await axios.delete(
         `${apiUrl}/api/daily-buying-products/${deleteTarget._id}`,
         {
-          method: 'DELETE',
-          credentials: 'include',
+          withCredentials: true,
+          timeout: 15000,
         }
       );
+
+      const result = response.data;
+
+      if (!result.success) {
+        throw new Error(result.message || 'Product delete heiparila nahi.');
+      }
 
       if (response.status === 401) {
         window.location.replace('/');
         return;
       }
-
-      const result = await response.json();
 
       if (!response.ok || !result.success) {
         throw new Error(result.message || 'Product delete heiparila nahi.');
@@ -419,12 +441,10 @@ export default function DailyBuyingProductList() {
       setProducts((previous) =>
         previous.filter((item) => item._id !== deleteTarget._id)
       );
-      setMessage('Product successfully deleted.');
-      setMessageType('info');
+      showSuccess('Product successfully deleted.');
       setDeleteTarget(null);
     } catch (error) {
-      setMessage(error.message || 'Product delete heiparila nahi.');
-      setMessageType('error');
+      showError(getErrorMessage(error, 'Product delete heiparila nahi.'));
       setDeleteTarget(null);
     } finally {
       setIsDeleting(false);
@@ -634,8 +654,8 @@ export default function DailyBuyingProductList() {
                 render: () => (
                   <span
                     className={`font-bold ${profitAfterExpenses < 0
-                        ? 'text-red-600'
-                        : 'text-[#176B45]'
+                      ? 'text-red-600'
+                      : 'text-[#176B45]'
                       }`}
                   >
                     {profitAfterExpenses < 0
@@ -713,8 +733,8 @@ export default function DailyBuyingProductList() {
                         disabled={!selectedDate || isPaid || Boolean(payingPerson)}
                         onClick={() => markPersonPaid(person.key)}
                         className={`rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 ${isPaid
-                            ? 'bg-green-600 text-white'
-                            : 'bg-[#176B45] text-white hover:bg-[#145638]'
+                          ? 'bg-green-600 text-white'
+                          : 'bg-[#176B45] text-white hover:bg-[#145638]'
                           }`}
                       >
                         {isPaid

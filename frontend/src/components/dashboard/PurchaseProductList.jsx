@@ -1,12 +1,14 @@
 'use client';
+import axiosFetch from "@/lib/axios-fetch";
 
 import { useEffect, useMemo, useState } from 'react';
 import DashboardLayout from '../layout/DashboardLayout';
 import Table from '../reusable/Table';
 import Warning from '../reusable/Warning';
-
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 const categories = ['Daily Usage', 'Stock Product'];
+
+import apiUrl from '@/services/api';
+import { showSuccess, showError, showWarning } from '@/lib/toast';
 
 const todayString = () => {
   const now = new Date();
@@ -45,7 +47,7 @@ export default function PurchaseProductList() {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch(`${apiUrl}/api/purchase-products`, {
+      const response = await axiosFetch(`${apiUrl}/api/purchase-products`, {
         credentials: 'include',
         cache: 'no-store',
       });
@@ -65,7 +67,7 @@ export default function PurchaseProductList() {
         setEntryDate((previous) => previous || dates[0]);
       }
     } catch (err) {
-      setError(err.message || 'Backend connection check kara.');
+      showError(err.message || 'Backend connection check kara.');
     } finally {
       setLoading(false);
     }
@@ -102,13 +104,13 @@ export default function PurchaseProductList() {
     setError('');
 
     if (!entryDate || !productName.trim()) {
-      setError('Date au product name enter kara.');
+      showWarning('Date au product name enter kara.');
       return;
     }
 
     setSaving(true);
     try {
-      const response = await fetch(`${apiUrl}/api/purchase-products`, {
+      const response = await axiosFetch(`${apiUrl}/api/purchase-products`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -126,9 +128,9 @@ export default function PurchaseProductList() {
       setSelectedDate(entryDate);
       setDateLocked(true);
       setProductName('');
-      setMessage('Product successfully saved.');
+      showSuccess('Product successfully saved.');
     } catch (err) {
-      setError(err.message || 'Product save heiparila nahi.');
+      showError(err.message || 'Product save heiparila nahi.');
     } finally {
       setSaving(false);
     }
@@ -157,7 +159,7 @@ export default function PurchaseProductList() {
   async function clearProductDetails(product) {
     setError('');
     try {
-      const response = await fetch(`${apiUrl}/api/purchase-products/${product._id}`, {
+      const response = await axiosFetch(`${apiUrl}/api/purchase-products/${product._id}`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -171,7 +173,7 @@ export default function PurchaseProductList() {
       if (!response.ok || !result.success) throw new Error(result.message || 'Checkbox update heiparila nahi.');
       setProducts((previous) => previous.map((item) => item._id === product._id ? result.product : item));
     } catch (err) {
-      setError(err.message || 'Checkbox update heiparila nahi.');
+      showError(err.message || 'Checkbox update heiparila nahi.');
     }
   }
 
@@ -182,7 +184,7 @@ export default function PurchaseProductList() {
     setModalSaving(true);
     setError('');
     try {
-      const response = await fetch(`${apiUrl}/api/purchase-products/${modalProduct._id}`, {
+      const response = await axiosFetch(`${apiUrl}/api/purchase-products/${modalProduct._id}`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -198,9 +200,9 @@ export default function PurchaseProductList() {
       setModalProduct(null);
       setQuantity('');
       setPrice('');
-      setMessage('Product details saved.');
+      showSuccess('Product details saved.');
     } catch (err) {
-      setError(err.message || 'Details save heiparila nahi.');
+      showError(err.message || 'Details save heiparila nahi.');
     } finally {
       setModalSaving(false);
     }
@@ -214,7 +216,7 @@ export default function PurchaseProductList() {
     setMessage('');
 
     try {
-      const response = await fetch(
+      const response = await axiosFetch(
         `${apiUrl}/api/purchase-products/${deleteTarget._id}`,
         {
           method: 'DELETE',
@@ -241,10 +243,10 @@ export default function PurchaseProductList() {
         setModalProduct(null);
       }
 
-      setMessage(`"${deleteTarget.productName}" successfully deleted.`);
+      showSuccess(`"${deleteTarget.productName}" successfully deleted.`);
       setDeleteTarget(null);
     } catch (err) {
-      setError(err.message || 'Product delete heiparila nahi.');
+      showError(err.message || 'Product delete heiparila nahi.');
     } finally {
       setDeleteLoading(false);
     }

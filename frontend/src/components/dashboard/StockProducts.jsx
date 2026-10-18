@@ -1,11 +1,13 @@
 'use client';
+import axiosFetch from "@/lib/axios-fetch";
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import DashboardLayout from '../layout/DashboardLayout';
 import Table from '../reusable/Table';
 import Warning from '../reusable/Warning';
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import apiUrl from '@/services/api';
+import { showSuccess, showError, showWarning } from '@/lib/toast';
 const modalStorageKey = 'ma-stall-stock-edit-modal';
 
 const money = value =>
@@ -42,7 +44,7 @@ export default function StockProducts() {
   });
 
   const request = useCallback(async (url, options = {}) => {
-    const response = await fetch(`${apiUrl}${url}`, {
+    const response = await axiosFetch(`${apiUrl}${url}`, {
       ...options,
       credentials: 'include',
       cache: 'no-store',
@@ -70,7 +72,7 @@ export default function StockProducts() {
       const result = await request('/api/stock-products');
       setProducts(result.products || []);
     } catch (err) {
-      setError(err.message || 'Stock products load heiparila nahi.');
+      showError(err.message || 'Stock products load heiparila nahi.');
     } finally {
       setLoading(false);
     }
@@ -126,7 +128,7 @@ export default function StockProducts() {
         !Number.isFinite(Number(enteredPrice)) ||
         Number(enteredPrice) < 0)
     ) {
-      setError('Price re valid amount dia (e.g. 100 or 100.50).');
+      showWarning('Price re valid amount dia (e.g. 100 or 100.50).');
       return;
     }
 
@@ -150,9 +152,9 @@ export default function StockProducts() {
         price: '',
         category: 'Permanent Stock'
       });
-      setMessage('Stock product successfully saved.');
+      showSuccess('Stock product successfully saved.');
     } catch (err) {
-      setError(err.message || 'Product save heiparila nahi.');
+      showError(err.message || 'Product save heiparila nahi.');
     } finally {
       setSaving(false);
     }
@@ -174,9 +176,9 @@ export default function StockProducts() {
         previous.map(item => item._id === editing._id ? result.product : item)
       );
       closeEdit();
-      setMessage('Stock product updated successfully.');
+      showSuccess('Stock product updated successfully.');
     } catch (err) {
-      setError(err.message || 'Product update heiparila nahi.');
+      showError(err.message || 'Product update heiparila nahi.');
     } finally {
       setSaving(false);
     }
@@ -191,10 +193,10 @@ export default function StockProducts() {
       await request(`/api/stock-products/${deleteTarget._id}`, { method: 'DELETE' });
       setProducts(previous => previous.filter(item => item._id !== deleteTarget._id));
       if (editing?._id === deleteTarget._id) closeEdit();
-      setMessage(`"${deleteTarget.productName}" successfully deleted.`);
+      showSuccess(`"${deleteTarget.productName}" successfully deleted.`);
       setDeleteTarget(null);
     } catch (err) {
-      setError(err.message || 'Product delete heiparila nahi.');
+      showError(err.message || 'Product delete heiparila nahi.');
     } finally {
       setDeleting(false);
     }
