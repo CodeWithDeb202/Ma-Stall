@@ -24,10 +24,8 @@ export default function PrivateGate() {
 
     const requestId = crypto.randomUUID();
 
-    console.info(`[LOGIN:${requestId}] Submit started`);
 
     try {
-      console.info(`[LOGIN:${requestId}] Sending verification request`);
 
       const response = await axios.post(
         "/api/auth/verify",
@@ -35,16 +33,10 @@ export default function PrivateGate() {
         { withCredentials: true }
       );
 
-      console.info(`[LOGIN:${requestId}] Verification response`, {
-        status: response.status,
-        success: response.data?.success,
-      });
 
       if (response.status === 200 && response.data?.success) {
-        console.info(`[LOGIN:${requestId}] Navigating to dashboard`);
         router.replace("/dashboard");
       } else {
-        console.warn(`[LOGIN:${requestId}] Verification was not successful`);
         setError(response.data?.message || "Verification failed.");
       }
     } catch (error) {

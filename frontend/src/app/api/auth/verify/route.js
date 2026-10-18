@@ -16,7 +16,6 @@ export async function POST(request) {
             }
         );
 
-        console.info("[AUTH VERIFY PROXY RESPONSE]", { status: backendResponse.status, success: backendResponse.data?.success, setCookiePresent: Boolean(backendResponse.headers["set-cookie"]) });
         const data = backendResponse.data ?? {};
         const response = NextResponse.json(data, {
             status: backendResponse.status,
