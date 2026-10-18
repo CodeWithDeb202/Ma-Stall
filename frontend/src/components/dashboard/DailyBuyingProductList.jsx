@@ -86,13 +86,13 @@ export default function DailyBuyingProductList() {
           return;
         }
 
-        if (!productResponse.ok || !productResult.success) {
+        if (!productResult.success) {
           throw new Error(
             productResult.message || 'Products load heiparila nahi.'
           );
         }
 
-        if (!recordResponse.ok || !recordResult.success) {
+        if (!recordResult.success) {
           throw new Error(
             recordResult.message || 'Daily profit records load heiparila nahi.'
           );
@@ -171,7 +171,7 @@ export default function DailyBuyingProductList() {
           return;
         }
 
-        if (!response.ok || !result.success) {
+        if (!result.success) {
           throw new Error(result.message || 'Payment status load heiparila nahi.');
         }
 
@@ -222,7 +222,7 @@ export default function DailyBuyingProductList() {
         return;
       }
 
-      if (!response.ok || !result.success) {
+      if (!result.success) {
         throw new Error(result.message || 'Payment save heiparila nahi.');
       }
 
@@ -281,13 +281,13 @@ export default function DailyBuyingProductList() {
     event.preventDefault();
     setMessage('');
 
-    if (!entryDate || !productName.trim() || price === '' || quantity === '') {
+    if (!entryDate || !productName.trim() || price === '') {
       showWarning('Date, product name, price au quantity fill kara.');
       return;
     }
 
     const numericPrice = Number(price);
-    const quantityText = String(quantity ?? '').trim();
+    const quantityText = String(quantity ?? '').trim() || '1';
 
     if (
       quantityText &&
@@ -328,7 +328,7 @@ export default function DailyBuyingProductList() {
         return;
       }
 
-      if (!response.ok || !result.success) {
+      if (!result.success) {
         throw new Error(result.message || 'Product save heiparila nahi.');
       }
 
@@ -391,7 +391,7 @@ export default function DailyBuyingProductList() {
         return;
       }
 
-      if (!response.ok || !result.success) {
+      if (!result.success) {
         throw new Error(result.message || 'Product update heiparila nahi.');
       }
 
@@ -434,7 +434,7 @@ export default function DailyBuyingProductList() {
         return;
       }
 
-      if (!response.ok || !result.success) {
+      if (!result.success) {
         throw new Error(result.message || 'Product delete heiparila nahi.');
       }
 
@@ -483,12 +483,12 @@ export default function DailyBuyingProductList() {
             },
             {
               name: 'price',
-              label: 'Total Price (₹)',
+              label: 'Price (₹)',
               type: 'number',
               required: true,
               min: 0,
               step: 'any',
-              placeholder: 'Total price for this quantity',
+              placeholder: 'Enter price',
             },
             {
               name: 'quantity',
@@ -781,7 +781,7 @@ export default function DailyBuyingProductList() {
                 },
                 {
                   name: 'price',
-                  label: 'Total Price (₹)',
+                  label: 'Price (₹)',
                   type: 'number',
                   required: false,
                   min: 0,
