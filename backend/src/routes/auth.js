@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const router = express.Router();
 
 router.post('/verify', (req, res) => {
+  console.info('[BACKEND AUTH] Verify request received', { hasSecretCode: typeof req.body?.secretCode === 'string', nodeEnv: process.env.NODE_ENV });
   const { secretCode } = req.body || {};
   const expectedCode = process.env.ACCESS_CODE;
   const sessionSecret = process.env.SESSION_SECRET;
@@ -39,6 +40,7 @@ router.post('/verify', (req, res) => {
 
   const isProduction = process.env.NODE_ENV === 'production';
 
+  console.info('[BACKEND AUTH] Setting session cookie', { secure: isProduction, sameSite: isProduction ? 'none' : 'lax' });
   res.cookie('ma_stall_session', token, {
     httpOnly: true,
     secure: isProduction,
@@ -51,6 +53,7 @@ router.post('/verify', (req, res) => {
 });
 
 router.get('/session', require('../middleware/requireAuth'), (req, res) => {
+  console.info('[BACKEND AUTH] Session verified successfully');
   res.json({ success: true, authenticated: true });
 });
 
