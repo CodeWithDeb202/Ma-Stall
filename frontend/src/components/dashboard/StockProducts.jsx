@@ -14,9 +14,9 @@ const money = value =>
   value == null || value === ''
     ? '—'
     : `₹${Number(value).toLocaleString('en-IN', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      })}`;
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
 
 const displayDate = date => {
   if (!date) return 'N/A';
@@ -28,6 +28,7 @@ export default function StockProducts() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [selectionLocked, setSelectionLocked] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -98,7 +99,7 @@ export default function StockProducts() {
       } else {
         localStorage.removeItem(modalStorageKey);
       }
-    } catch {}
+    } catch { }
   }, [loading, products]);
 
   function openEdit(product) {
@@ -109,14 +110,14 @@ export default function StockProducts() {
     setEditQuantity(product.quantity || '');
     try {
       localStorage.setItem(modalStorageKey, product._id);
-    } catch {}
+    } catch { }
   }
 
   function closeEdit() {
     setEditing(null);
     try {
       localStorage.removeItem(modalStorageKey);
-    } catch {}
+    } catch { }
   }
 
   async function addProduct(event) {
@@ -145,13 +146,14 @@ export default function StockProducts() {
         })
       });
       setProducts(previous => [...previous, result.product]);
-      setForm({
-        date: '',
+
+      setSelectionLocked(true);
+      setForm(previous => ({
+        ...previous,
         productName: '',
         quantity: '',
-        price: '',
-        category: 'Permanent Stock'
-      });
+        price: ''
+      }));
       showSuccess('Stock product successfully saved.');
     } catch (err) {
       showError(err.message || 'Product save heiparila nahi.');
@@ -251,6 +253,7 @@ export default function StockProducts() {
               <input
                 type="date"
                 value={form.date}
+                disabled={selectionLocked}
                 onChange={e => setForm({ ...form, date: e.target.value })}
                 className="mt-2 w-full rounded-lg border border-[#D8E5D8] p-3 outline-none focus:ring-2 focus:ring-[#176B45]"
               />
@@ -296,6 +299,7 @@ export default function StockProducts() {
               <select
                 required
                 value={form.category}
+                disabled={selectionLocked}
                 onChange={e => setForm({ ...form, category: e.target.value })}
                 className="mt-2 w-full rounded-lg border border-[#D8E5D8] bg-white p-3 outline-none focus:ring-2 focus:ring-[#176B45]"
               >
@@ -310,7 +314,16 @@ export default function StockProducts() {
               </button>
               <button
                 type="button"
-                onClick={() => setForm({ date: '', productName: '', quantity: '', price: '', category: 'Permanent Stock' })}
+                onClick={() => {
+                  setForm({
+                    date: '',
+                    productName: '',
+                    quantity: '',
+                    price: '',
+                    category: 'Permanent Stock'
+                  });
+                  setSelectionLocked(false);
+                }}
                 className="rounded-xl border border-[#D8E5D8] px-5 py-3 font-semibold hover:bg-[#F1F7F0]"
               >
                 Reset
