@@ -71,7 +71,7 @@ export default function Dashboard() {
         }
 
         loadRecords();
-    }, [apiUrl]);
+    }, []);
 
     useEffect(() => {
         if (!records.length) return;
