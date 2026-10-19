@@ -9,6 +9,12 @@ const stockProductSchema = new mongoose.Schema({
       message: 'Invalid date.'
     }
   },
+  sourcePurchaseProductId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PurchaseProduct',
+    default: null,
+    index: true
+  },
   productName: {
     type: String,
     required: true,

@@ -1,7 +1,7 @@
 'use client';
 import axiosFetch from "@/lib/axios-fetch";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import DashboardLayout from '../layout/DashboardLayout';
 import Table from '../reusable/Table';
 import Form from '../reusable/Form';
@@ -26,6 +26,36 @@ export default function Dashboard() {
     const [cash, setCash] = useState('');
     const [purseCash, setPurseCash] = useState('');
     const [records, setRecords] = useState([]);
+    const [purchaseProducts, setPurchaseProducts] = useState([]);
+
+    const dailyUsageByNextDate = useMemo(() => {
+        const totals = {};
+
+        purchaseProducts.forEach((product) => {
+            if (
+                product.category !== 'Daily Usage' ||
+                !product.checked ||
+                product.price == null ||
+                !/^\d{4}-\d{2}-\d{2}$/.test(product.date || '')
+            ) {
+                return;
+            }
+
+            const [year, month, day] = product.date.split('-').map(Number);
+            const next = new Date(year, month - 1, day);
+            next.setDate(next.getDate() + 1);
+
+            const nextDate = [
+                next.getFullYear(),
+                String(next.getMonth() + 1).padStart(2, '0'),
+                String(next.getDate()).padStart(2, '0'),
+            ].join('-');
+
+            totals[nextDate] = (totals[nextDate] || 0) + (Number(product.price) || 0);
+        });
+
+        return totals;
+    }, [purchaseProducts]);
     const [selectedMonth, setSelectedMonth] = useState('');
     const availableMonths = [
         ...new Set(records.map((record) => record.date.slice(0, 7))),
@@ -81,6 +111,26 @@ export default function Dashboard() {
         }
 
         loadRecords();
+
+        async function loadPurchaseProducts() {
+            try {
+                const response = await axiosFetch(`${apiUrl}/api/purchase-products`, {
+                    credentials: 'include',
+                    cache: 'no-store',
+                });
+
+                if (!response.ok) return;
+
+                const result = await response.json();
+                if (result.success) {
+                    setPurchaseProducts(result.products || []);
+                }
+            } catch (error) {
+                console.error('Could not load purchase products:', error);
+            }
+        }
+
+        loadPurchaseProducts();
     }, []);
 
     useEffect(() => {
@@ -431,7 +481,13 @@ export default function Dashboard() {
                                 label: 'Invest',
                                 render: (row) => (
                                     <span className="font-semibold text-red-600">
-                                        ₹{(row.invest || 0).toLocaleString('en-IN')}
+                                        ₹{(
+                                            (Number(row.invest) || 0) +
+                                            (Number(row.dailyUsage) || 0)
+                                        ).toLocaleString('en-IN', {
+                                            minimumFractionDigits: 0,
+                                            maximumFractionDigits: 2,
+                                        })}
                                     </span>
                                 ),
                             },

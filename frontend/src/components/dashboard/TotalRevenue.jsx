@@ -447,10 +447,28 @@ export default function TotalRevenue() {
   }, [records, products, stockProducts, monthStart, monthEnd]);
 
 
-  const yearly = useMemo(
-    () => summarize(records, products, yearStart, yearEnd),
-    [records, products, yearStart, yearEnd]
-  );
+  const yearly = useMemo(() => {
+    const summary = summarize(records, products, yearStart, yearEnd);
+
+    const yearlyPermanentStockExpense = stockProducts
+      .filter(
+        (item) =>
+          item.category === 'Permanent Stock' &&
+          item.date &&
+          item.date >= yearStart &&
+          item.date <= yearEnd
+      )
+      .reduce(
+        (total, item) => total + Number(item.price || 0),
+        0
+      );
+
+    return {
+      ...summary,
+      invest: summary.invest + yearlyPermanentStockExpense,
+      profit: summary.profit - yearlyPermanentStockExpense,
+    };
+  }, [records, products, stockProducts, yearStart, yearEnd]);
 
   const totalDays = new Set(records.map((r) => r.date)).size;
   const totalMonths = new Set(records.map((r) => r.date.slice(0, 7))).size;

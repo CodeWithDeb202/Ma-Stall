@@ -1,9 +1,107 @@
 const express = require('express');
 const PurchaseProduct = require('../models/PurchaseProduct');
+const DailyRecord = require('../models/DailyRecord');
+const DailyBuyingProduct = require('../models/DailyBuyingProduct');
+const StockProduct = require('../models/StockProduct');
 const requireAuth = require('../middleware/requireAuth');
 
 const router = express.Router();
 router.use(requireAuth);
+
+// Recalculate Daily Usage for the day AFTER the purchase date.
+// Only the dailyUsage field is changed; manual amounts are preserved.
+async function syncNextDayDailyUsage(purchaseDate) {
+  const [year, month, day] = purchaseDate.split('-').map(Number);
+  const next = new Date(Date.UTC(year, month - 1, day + 1));
+  const nextDate = [
+    next.getUTCFullYear(),
+    String(next.getUTCMonth() + 1).padStart(2, '0'),
+    String(next.getUTCDate()).padStart(2, '0'),
+  ].join('-');
+
+  const products = await PurchaseProduct.find({
+    date: purchaseDate,
+    category: 'Daily Usage',
+    checked: true,
+    price: { $ne: null },
+  }).select('price').lean();
+
+  const total = products.reduce((sum, item) => sum + (Number(item.price) || 0), 0);
+
+  await DailyRecord.findOneAndUpdate(
+    { date: nextDate },
+    {
+      $set: { dailyUsage: Math.round((total + Number.EPSILON) * 100) / 100 },
+      $setOnInsert: { date: nextDate },
+    },
+    { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
+  );
+}
+
+
+
+// Keep a separate Daily Buying copy for each checked Stock Product.
+// Editing the Daily Buying copy never updates the original Purchase Product.
+async function syncStockProductToDailyBuying(product, remove = false) {
+  const sourceId = product._id;
+
+  if (remove || !product.checked) {
+    await DailyBuyingProduct.deleteMany({
+      sourcePurchaseProductId: sourceId,
+    });
+    return;
+  }
+
+  await DailyBuyingProduct.findOneAndUpdate(
+    { sourcePurchaseProductId: sourceId },
+    {
+      $set: {
+        date: product.date,
+        productName: product.productName,
+        quantity: product.quantity || '',
+        price: product.price == null ? null : product.price,
+      },
+      $setOnInsert: {
+        sourcePurchaseProductId: sourceId,
+      },
+    },
+    {
+      upsert: true,
+      new: true,
+      runValidators: true,
+      setDefaultsOnInsert: true,
+    }
+  );
+}
+
+
+// Sync Permanent Stock purchases to Stock, linked by purchase ID.
+async function syncPermanentStockPurchase(product, remove = false) {
+  if (remove || !product.checked) {
+    await StockProduct.deleteMany({ sourcePurchaseProductId: product._id });
+    return;
+  }
+
+  await StockProduct.findOneAndUpdate(
+    { sourcePurchaseProductId: product._id },
+    {
+      $set: {
+        date: product.date,
+        productName: product.productName,
+        category: 'Permanent Stock',
+        quantity: product.quantity || '',
+        price: product.price == null ? null : product.price
+      },
+      $setOnInsert: { sourcePurchaseProductId: product._id }
+    },
+    {
+      upsert: true,
+      new: true,
+      runValidators: true,
+      setDefaultsOnInsert: true
+    }
+  );
+}
 
 const validDate = (date) => {
   if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
@@ -69,6 +167,10 @@ router.post('/', async (req, res) => {
       checked: false,
     });
 
+    if (product.category === 'Daily Usage') {
+      await syncNextDayDailyUsage(product.date);
+    }
+
     return res.status(201).json({ success: true, product });
   } catch (error) {
     console.error('Save purchase product:', error.message);
@@ -120,6 +222,18 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Product milila nahi.' });
     }
 
+    if (product.category === 'Daily Usage') {
+      await syncNextDayDailyUsage(product.date);
+    }
+
+    if (product.category === 'Stock Product') {
+      await syncStockProductToDailyBuying(product, !product.checked);
+    }
+
+    if (product.category === 'Permanent Stock') {
+      await syncPermanentStockPurchase(product, !product.checked);
+    }
+
     return res.json({ success: true, product });
   } catch (error) {
     console.error('Update purchase product:', error.message);
@@ -146,6 +260,18 @@ router.delete('/:id', async (req, res) => {
         success: false,
         message: 'Product milila nahi.',
       });
+    }
+
+    if (product.category === 'Daily Usage') {
+      await syncNextDayDailyUsage(product.date);
+    }
+
+    if (product.category === 'Stock Product') {
+      await syncStockProductToDailyBuying(product, true);
+    }
+
+    if (product.category === 'Permanent Stock') {
+      await syncPermanentStockPurchase(product, true);
     }
 
     return res.json({
