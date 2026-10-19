@@ -108,13 +108,25 @@ export default function PurchaseProductList() {
       return;
     }
 
+    const cleanName = productName.trim().toLocaleLowerCase().replace(/^\\p{L}/u, (letter) => letter.toLocaleUpperCase());
+    const duplicate = products.some(
+      (item) =>
+        item.date === entryDate &&
+        item.productName.trim().toLocaleLowerCase() === cleanName.toLocaleLowerCase()
+    );
+
+    if (duplicate) {
+      showWarning(`"${cleanName}" ei date pain already achhi.`);
+      return;
+    }
+
     setSaving(true);
     try {
       const response = await axiosFetch(`${apiUrl}/api/purchase-products`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: entryDate, productName: productName.trim(), category }),
+        body: JSON.stringify({ date: entryDate, productName: cleanName, category }),
       });
 
       if (response.status === 401) {
@@ -302,7 +314,11 @@ export default function PurchaseProductList() {
               Product Name
               <input
                 value={productName}
-                onChange={(event) => setProductName(event.target.value)}
+                onChange={(event) =>
+                  setProductName(
+                    event.target.value.replace(/^\\s*\\p{L}/u, (letter) => letter.toLocaleUpperCase())
+                  )
+                }
                 maxLength={150}
                 placeholder="Enter product name"
                 required

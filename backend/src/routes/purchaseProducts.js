@@ -46,9 +46,23 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Valid category select kara.' });
     }
 
+    const cleanName = productName.trim().toLocaleLowerCase().replace(/^\\p{L}/u, (letter) => letter.toLocaleUpperCase());
+
+    const existingProducts = await PurchaseProduct.find({ date }).select('productName').lean();
+    const duplicate = existingProducts.some(
+      (item) => item.productName.trim().toLocaleLowerCase() === cleanName.toLocaleLowerCase()
+    );
+
+    if (duplicate) {
+      return res.status(409).json({
+        success: false,
+        message: `"${cleanName}" ei date pain already achhi.`,
+      });
+    }
+
     const product = await PurchaseProduct.create({
       date,
-      productName: productName.trim(),
+      productName: cleanName,
       category,
       quantity: '',
       price: null,
