@@ -482,8 +482,7 @@ export default function Dashboard() {
                                 render: (row) => (
                                     <span className="font-semibold text-red-600">
                                         ₹{(
-                                            (Number(row.invest) || 0) +
-                                            (Number(row.dailyUsage) || 0)
+                                            row.invest ? Number(row.invest) : (Number(row.dailyUsage) || 0)
                                         ).toLocaleString('en-IN', {
                                             minimumFractionDigits: 0,
                                             maximumFractionDigits: 2,
@@ -510,10 +509,7 @@ export default function Dashboard() {
                                 key: 'profit',
                                 label: 'Profit / Loss',
                                 render: (row) => {
-                                    const profit =
-                                        (row.income || 0) -
-                                        (row.invest || 0) -
-                                        (row.cash || 0);
+                                    const profit = (row.income || 0) - (row.invest ? (row.invest || 0) : (row.dailyUsage || 0)) - (row.cash || 0);
 
                                     return (
                                         <span
@@ -639,7 +635,7 @@ export default function Dashboard() {
                                 key: 'deb',
                                 label: 'Deb',
                                 render: (row) => (
-                                    <span className="font-medium text-[#F87171]">
+                                    <span className="font-medium text-[#f23e3e]">
                                         -₹{Math.abs(row.deb).toFixed(2)}
                                     </span>
                                 ),
@@ -648,7 +644,7 @@ export default function Dashboard() {
                                 key: 'puja',
                                 label: 'Puja',
                                 render: (row) => (
-                                    <span className="font-medium text-[#F87171]">
+                                    <span className="font-medium text-[#f23e3e]">
                                         -₹{Math.abs(row.puja).toFixed(2)}
                                     </span>
                                 ),
@@ -657,7 +653,7 @@ export default function Dashboard() {
                                 key: 'lija',
                                 label: 'Lija',
                                 render: (row) => (
-                                    <span className="font-medium text-[#F87171]">
+                                    <span className="font-medium text-[#f23e3e]">
                                         -₹{Math.abs(row.lija).toFixed(2)}
                                     </span>
                                 ),
@@ -674,14 +670,14 @@ export default function Dashboard() {
                         ]}
                         data={filteredRecords.map((record) => {
                             const totalPaise = Math.round(
-                                Number(record.invest || 0) * 100
+                                (record.invest ? Number(record.invest || 0) : Number(record.dailyUsage || 0)) * 100
                             );
                             const basePaise = Math.floor(totalPaise / 3);
                             const remainder = totalPaise - basePaise * 3;
 
                             return {
                                 date: record.date,
-                                invest: Number(record.invest || 0),
+                                invest: record.invest ? Number(record.invest || 0) : Number(record.dailyUsage || 0),
                                 deb: basePaise / 100,
                                 puja: (basePaise + (remainder >= 1 ? 1 : 0)) / 100,
                                 lija: (basePaise + (remainder >= 2 ? 1 : 0)) / 100,

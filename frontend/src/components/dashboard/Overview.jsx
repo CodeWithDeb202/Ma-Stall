@@ -129,14 +129,10 @@ export default function Overview() {
     return [...dates].sort((a, b) => b.localeCompare(a));
   }, [records, dailyBuying, purchases, stock]);
 
-  const currentDate = today();
-
-
-
   const availableYears = useMemo(() => {
     const years = new Set(availableDates.map((value) => value.slice(0, 4)));
     return [...years].sort((a, b) => b.localeCompare(a));
-  }, [availableDates, currentDate]);
+  }, [availableDates]);
 
   const availableMonths = useMemo(() => {
     const months = new Set(
@@ -146,7 +142,7 @@ export default function Overview() {
     );
 
     return [...months].sort();
-  }, [availableDates, year, currentDate]);
+  }, [availableDates, year]);
 
   const availableDays = useMemo(() => {
     const days = new Set(
@@ -156,7 +152,7 @@ export default function Overview() {
     );
 
     return [...days].sort();
-  }, [availableDates, year, month, currentDate]);
+  }, [availableDates, year, month]);
 
   const daysInMonth = new Date(Number(year), Number(month), 0).getDate();
   const safeDay = String(Math.min(Number(day), daysInMonth)).padStart(2, '0');
@@ -166,7 +162,6 @@ export default function Overview() {
       localStorage.setItem('overview-selected-date', date);
     }
   }, [date, datePreferenceLoaded]);
-
 
   const record = records.find((item) => item.date === date) || {};
   const buyingToday = dailyBuying.filter((item) => item.date === date);
@@ -178,7 +173,7 @@ export default function Overview() {
     return itemDate === date && String(item.category || '').toLowerCase().includes('permanent');
   });
 
-  const invest = Number(record.invest || 0);
+  const invest = record.invest ? Number(record.invest || 0) : Number(record.dailyUsage || 0);
   const income = Number(record.income || 0);
   const cash = Number(record.cash || 0);
   const baseProfit = income - invest - cash;
@@ -258,7 +253,7 @@ export default function Overview() {
       </section>
 
       {loading ? (
-        <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-[#D8E5D8] bg-white">
+        <div className="flex min-h-80 items-center justify-center rounded-2xl border border-[#D8E5D8] bg-white">
           <Spinner label="Loading overview..." />
         </div>
       ) : error ? (
@@ -275,7 +270,7 @@ export default function Overview() {
             {cards.map((card) => (
               <article key={card.title} className="rounded-2xl border border-[#D8E5D8] bg-white p-5 shadow-sm">
                 <p className="text-sm font-semibold text-[#52715D]">{card.title}</p>
-                <p className={`mt-3 break-words text-2xl font-bold ${card.color}`}>{card.value}</p>
+                <p className={`mt-3 wrap-break-word text-2xl font-bold ${card.color}`}>{card.value}</p>
                 <p className="mt-2 text-xs leading-5 text-[#52715D]">{card.note}</p>
               </article>
             ))}
