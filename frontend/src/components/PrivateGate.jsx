@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 
@@ -10,8 +10,37 @@ export default function PrivateGate() {
   const [showSecret, setShowSecret] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [alreadyLoggedIn, setAlreadyLoggedIn] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
 
   const router = useRouter();
+
+  useState(() => {
+    // Session verification is performed below using the existing auth endpoint.
+  });
+
+  useEffect(() => {
+    let active = true;
+
+    axios.get("/api/auth/session", { withCredentials: true })
+      .then((response) => {
+        if (active && response.data?.authenticated) {
+          setAlreadyLoggedIn(true);
+        }
+      })
+      .catch(() => {
+        // Not logged in: keep the original secret-code form.
+      })
+      .finally(() => {
+        if (active) setCheckingSession(false);
+      });
+
+    return () => { active = false; };
+  }, []);
+
+  function goToDashboard() {
+    router.replace("/dashboard");
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -59,6 +88,12 @@ export default function PrivateGate() {
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-[#f7faf7] px-4">
+      {alreadyLoggedIn ? (
+        <div className="w-full max-w-md flex flex-col items-center gap-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#174D35] text-center">This is Private Website</h1>
+          <button type="button" onClick={goToDashboard} className="w-full rounded-xl bg-[#174D35] px-5 py-3 font-semibold text-white transition hover:bg-[#236747]">Navigate to Dashboard</button>
+        </div>
+      ) : (
       <form
         onSubmit={handleSubmit}
         className="w-full max-w-md flex flex-col items-center gap-6"
@@ -147,6 +182,7 @@ export default function PrivateGate() {
           {loading ? "Verifying..." : "Submit"}
         </button>
       </form>
+      )}
     </main>
   );
 }
