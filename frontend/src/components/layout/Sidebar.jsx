@@ -2,6 +2,7 @@
 
 export default function Sidebar({ activeSection, onSectionChange }) {
     const menuItems = [
+    { id: 'overview', label: 'Overview' },
         { id: 'purchase-products', label: 'Purchase Product List' },
         { id: 'daily-invest', label: 'Daily Invest & Income' },
         { id: 'daily-buying', label: 'Daily Buying Product List' },

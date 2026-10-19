@@ -20,6 +20,9 @@ export default function DashboardLayout({ children }) {
   }, [pathname]);
 
   const activeSection =
+    pathname === '/overview'
+      ? 'overview'
+      :
     pathname === '/dashboard/purchase-product-list'
       ? 'purchase-products'
       : pathname === '/dashboard/stock-products'
@@ -34,6 +37,7 @@ export default function DashboardLayout({ children }) {
 
   function handleSectionChange(section) {
     const routes = {
+      'overview': '/overview',
       'purchase-products': '/dashboard/purchase-product-list',
       'stock-products': '/dashboard/stock-products',
       'daily-invest': '/dashboard',
