@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import DashboardLayout from '../layout/DashboardLayout';
 import Table from '../reusable/Table';
 import Warning from '../reusable/Warning';
-const categories = ['Daily Usage', 'Stock Product'];
+const categories = ['Daily Usage', 'Stock Product', 'Permanent Stock'];
 
 import apiUrl from '@/services/api';
 import { showSuccess, showError, showWarning } from '@/lib/toast';
@@ -89,7 +89,7 @@ export default function PurchaseProductList() {
   );
 
   const totals = useMemo(() => {
-    const result = { 'Daily Usage': 0, 'Stock Product': 0 };
+    const result = { 'Daily Usage': 0, 'Stock Product': 0, 'Permanent Stock': 0 };
     selectedProducts.forEach((item) => {
       if (item.checked && item.price != null) {
         result[item.category] += Number(item.price) || 0;
@@ -108,7 +108,7 @@ export default function PurchaseProductList() {
       return;
     }
 
-    const cleanName = productName.trim().toLocaleLowerCase().replace(/^\\p{L}/u, (letter) => letter.toLocaleUpperCase());
+    const cleanName = productName.trim().toLocaleLowerCase().replace(/^[a-z]/i, (letter) => letter.toLocaleUpperCase());
     const duplicate = products.some(
       (item) =>
         item.date === entryDate &&
@@ -264,12 +264,56 @@ export default function PurchaseProductList() {
     }
   }
 
+  const categoryTextColor = (category) =>
+    category === 'Stock Product'
+      ? 'text-blue-700'
+      : category === 'Daily Usage'
+        ? 'text-purple-700'
+        : category === 'Permanent Stock'
+          ? 'text-teal-700'
+          : 'text-[#174D35]';
+
   const columns = [
     { key: 'serial', label: 'Sl. No.', render: (_, index) => Number(index) + 1 },
-    { key: 'productName', label: 'Product Name' },
-    { key: 'category', label: 'Category' },
+    {
+      key: 'productName',
+      label: 'Product Name',
+      render: (row) => {
+        const name = String(row.productName || '').trim();
+        return (
+          <span className="font-medium text-[#174D35]">
+            {name.replace(/^([a-z])/i, (letter) => letter.toLocaleUpperCase())}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'category',
+      label: 'Category',
+      render: (row) => (
+        <span className={`font-semibold ${
+          row.category === 'Stock Product'
+            ? 'text-blue-700'
+            : row.category === 'Daily Usage'
+              ? 'text-purple-700'
+              : row.category === 'Permanent Stock'
+                ? 'text-teal-700'
+                : 'text-[#174D35]'
+        }`}>
+          {row.category}
+        </span>
+      ),
+    },
     { key: 'quantity', label: 'Quantity', render: (row) => row.checked && row.quantity ? row.quantity : '—' },
-    { key: 'price', label: 'Price', render: (row) => row.checked ? money(row.price) : '—' },
+    {
+      key: 'price',
+      label: 'Price',
+      render: (row) => (
+        <span className="font-semibold text-red-600">
+          {row.checked ? money(row.price) : '—'}
+        </span>
+      ),
+    },
     {
       key: 'checked',
       label: 'Add Details',
@@ -314,11 +358,12 @@ export default function PurchaseProductList() {
               Product Name
               <input
                 value={productName}
-                onChange={(event) =>
+                onChange={(event) => {
+                  const value = event.target.value;
                   setProductName(
-                    event.target.value.replace(/^\\s*\\p{L}/u, (letter) => letter.toLocaleUpperCase())
-                  )
-                }
+                    value.replace(/^\s*[a-z]/i, (letter) => letter.toLocaleUpperCase())
+                  );
+                }}
                 maxLength={150}
                 placeholder="Enter product name"
                 required
@@ -373,7 +418,14 @@ export default function PurchaseProductList() {
             <p className="p-8 text-center text-[#52715D]">Loading products...</p>
           ) : (
             <Table
-              columns={columns}
+              columns={columns.map((column) =>
+                column.accessorKey === 'productName' || column.accessor === 'productName'
+                  ? { ...column, cell: ({ row, getValue }) => {
+                      const name = getValue?.() ?? row?.original?.productName ?? '';
+                      return String(name).replace(/^\s*[a-z]/i, (letter) => letter.toLocaleUpperCase());
+                    } }
+                  : column
+              )}
               data={selectedProducts}
               getRowKey={(row) => row._id}
               emptyMessage="No products saved for this date."
@@ -411,14 +463,33 @@ export default function PurchaseProductList() {
                   <div className="border-b border-[#D8E5D8] p-5">
                     <h3 className="text-lg font-semibold">{item}</h3>
                     <p className="mt-1 text-sm text-[#52715D]">{rows.length} products listed</p>
-                    <p className="mt-3 text-2xl font-bold text-[#176B45]">{money(totals[item])}</p>
+                    <p className="mt-3 text-2xl font-bold text-red-600">{money(totals[item])}</p>
                     <p className="text-xs text-[#52715D]">Total saved price · {checkedCount} product(s) with details</p>
                   </div>
                   <Table
                     columns={[
-                      { key: 'productName', label: 'Product Name' },
+                      {
+                        key: 'productName',
+                        label: 'Product Name',
+                        render: (row) => {
+                          const name = String(row.productName || '').trim();
+                          return (
+                            <span className={`font-medium ${categoryTextColor(row.category)}`}>
+                              {name.replace(/^([a-z])/i, (letter) => letter.toLocaleUpperCase())}
+                            </span>
+                          );
+                        },
+                      },
                       { key: 'quantity', label: 'Quantity', render: (row) => row.checked && row.quantity ? row.quantity : '—' },
-                      { key: 'price', label: 'Price', render: (row) => row.checked ? money(row.price) : '—' },
+                      {
+                        key: 'price',
+                        label: 'Price',
+                        render: (row) => (
+                          <span className="font-semibold text-red-600">
+                            {row.checked ? money(row.price) : '—'}
+                          </span>
+                        ),
+                      },
                     ]}
                     data={rows}
                     getRowKey={(row) => row._id}

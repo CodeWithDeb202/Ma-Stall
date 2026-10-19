@@ -42,11 +42,11 @@ router.post('/', async (req, res) => {
     if (typeof productName !== 'string' || !productName.trim() || productName.trim().length > 150) {
       return res.status(400).json({ success: false, message: 'Product name enter kara.' });
     }
-    if (!['Daily Usage', 'Stock Product'].includes(category)) {
+    if (!['Daily Usage', 'Stock Product', 'Permanent Stock'].includes(category)) {
       return res.status(400).json({ success: false, message: 'Valid category select kara.' });
     }
 
-    const cleanName = productName.trim().toLocaleLowerCase().replace(/^\\p{L}/u, (letter) => letter.toLocaleUpperCase());
+    const cleanName = productName.trim().toLocaleLowerCase().replace(/^\p{L}/u, (letter) => letter.toLocaleUpperCase());
 
     const existingProducts = await PurchaseProduct.find({ date }).select('productName').lean();
     const duplicate = existingProducts.some(

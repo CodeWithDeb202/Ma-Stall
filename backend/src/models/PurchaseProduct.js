@@ -16,7 +16,7 @@ const purchaseProductSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['Daily Usage', 'Stock Product'],
+    enum: ['Daily Usage', 'Stock Product', 'Permanent Stock'],
   },
   quantity: {
     type: String,

@@ -1,10 +1,9 @@
+const serverUrl = process.env.BACKEND_URL;
 
-const testing = false;
-const serverUrl = process.env.NEXT_PUBLIC_API_URL;
-const backendUrl = testing ? "http://localhost:5000" : serverUrl || "https://ma-stall.onrender.com";
+const backendUrl = serverUrl || "https://ma-stall.onrender.com";
 
 // Browser requests use same-origin Next.js API routes.
-// Server-side authentication checks call the backend directly.
+// Server-side requests use the private backend URL.
 const apiUrl = typeof window !== "undefined" ? "" : backendUrl;
 
 export default apiUrl;
