@@ -2,13 +2,12 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const backendUrl =
-  process.env.NEXT_PUBLIC_API_URL || "https://ma-stall.onrender.com";
+import apiUrl from "@/services/api";
 
 async function proxyRequest(request, context) {
   const { path = [] } = await context.params;
   const incomingUrl = new URL(request.url);
-  const targetUrl = `${backendUrl}/api/${path.map(encodeURIComponent).join("/")}${incomingUrl.search}`;
+  const targetUrl = `${apiUrl}/api/${path.map(encodeURIComponent).join("/")}${incomingUrl.search}`;
 
   try {
     const headers = new Headers();

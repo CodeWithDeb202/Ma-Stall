@@ -10,9 +10,17 @@ import Warning from '../reusable/Warning';
 import apiUrl from '@/services/api';
 import { showSuccess, showError, showWarning } from '@/lib/toast';
 
+function getTodayDate() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
 
 export default function Dashboard() {
-    const [date, setDate] = useState('');
+    const [date, setDate] = useState(getTodayDate);
     const [invest, setInvest] = useState('');
     const [income, setIncome] = useState('');
     const [cash, setCash] = useState('');
@@ -56,15 +64,6 @@ export default function Dashboard() {
 
                 if (response.ok && result.success) {
                     const loadedRecords = result.records || [];
-
-                    console.log(
-                        '[PURSE DEBUG] Loaded purse values:',
-                        loadedRecords.map((record) => ({
-                            date: record.date,
-                            purseCash: record.purseCash,
-                            keys: Object.keys(record),
-                        }))
-                    );
 
                     setRecords(loadedRecords);
 
@@ -233,11 +232,6 @@ export default function Dashboard() {
         }
 
         const updates = {};
-        console.log('[PURSE DEBUG] Form values:', {
-            date,
-            purseCash,
-            purseCashType: typeof purseCash,
-        });
         if (invest !== '') updates.invest = Number(invest);
         if (income !== '') updates.income = Number(income);
         if (cash !== '') updates.cash = Number(cash);
@@ -252,10 +246,6 @@ export default function Dashboard() {
         setMessage('');
 
         try {
-            console.log(
-                '[PURSE DEBUG] API payload JSON:',
-                JSON.stringify({ date, updates }, null, 2)
-            );
             const response = await axiosFetch(`${apiUrl}/api/records/${date}`, {
                 method: 'PUT',
                 credentials: 'include',
@@ -264,15 +254,6 @@ export default function Dashboard() {
             });
 
             const result = await response.json();
-
-            console.log(
-                '[PURSE DEBUG] API response JSON:',
-                JSON.stringify({
-                    status: response.status,
-                    success: result.success,
-                    record: result.record,
-                }, null, 2)
-            );
 
             if (response.status === 401) {
                 window.location.replace('/');
@@ -294,7 +275,7 @@ export default function Dashboard() {
             });
 
             showSuccess('Record successfully save hela.');
-            setDate('');
+            setDate(getTodayDate());
             setInvest('');
             setIncome('');
             setCash('');
@@ -384,12 +365,6 @@ export default function Dashboard() {
                             .sort((a, b) => b.date.localeCompare(a.date));
 
                         const latest = purseRecords[0];
-
-                        console.log('[PURSE DEBUG] All records:', records);
-
-                        console.log('[PURSE DEBUG] Purse records:', purseRecords);
-
-                        console.log('[PURSE DEBUG] Latest purse record:', latest);
 
                         return latest ? (
                             <>

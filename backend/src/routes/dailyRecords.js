@@ -19,12 +19,7 @@ router.put('/:date', async (req, res) => {
   try {
     const { date } = req.params;
     const { invest, income, cash, purseCash } = req.body || {};
-
-    console.log('[PURSE BACKEND] Request body:', req.body);
-    console.log('[PURSE BACKEND] Model path:', require.resolve('../models/DailyRecord'));
-    console.log('[PURSE BACKEND] Schema fields:', Object.keys(DailyRecord.schema.paths));
-
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return res.status(400).json({ success: false, message: 'Invalid date' });
     }
 
@@ -48,11 +43,7 @@ router.put('/:date', async (req, res) => {
       { $set: updates, $setOnInsert: { date } },
       { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
     );
-
-    console.log('[PURSE BACKEND] Saved record:', record?.toObject?.() ?? record);
-    console.log('[PURSE BACKEND] Saved purseCash:', record?.purseCash);
-
-    return res.json({ success: true, record });
+return res.json({ success: true, record });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(409).json({ success: false, message: 'Record update conflict; retry once' });

@@ -7,6 +7,4 @@ const backendUrl = testing ? "http://localhost:5000" : serverUrl || "https://ma-
 // Server-side authentication checks call the backend directly.
 const apiUrl = typeof window !== "undefined" ? "" : backendUrl;
 
-console.log("API URL :", apiUrl);
-
 export default apiUrl;
