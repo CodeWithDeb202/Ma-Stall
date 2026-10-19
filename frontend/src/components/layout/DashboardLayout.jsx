@@ -1,15 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
+import Spinner from '../reusable/Spinner';
 
 export default function DashboardLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  useEffect(() => {
+    setTimeout(() => {
+      setIsNavigating(false);
+    }, 1000);
+  }, [pathname]);
 
   const activeSection =
     pathname === '/dashboard/purchase-product-list'
@@ -36,6 +44,7 @@ export default function DashboardLayout({ children }) {
     const target = routes[section];
 
     if (target && pathname !== target) {
+      setIsNavigating(true);
       router.push(target);
     }
 
@@ -87,8 +96,15 @@ export default function DashboardLayout({ children }) {
             </nav>
           )}
 
-          <main className="scrollbar-hide min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
-            {children}
+          <main
+            className="relative scrollbar-hide min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain"
+            aria-busy={isNavigating}
+          >
+            {isNavigating ? (
+              <Spinner label="Loading page..." />
+            ) : (
+              children
+            )}
           </main>
         </div>
       </div>
