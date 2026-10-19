@@ -22,6 +22,11 @@ const dailyRecordSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    purseCash: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
   },
   { timestamps: true }
 );

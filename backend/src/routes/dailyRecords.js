@@ -18,14 +18,18 @@ router.get('/', async (req, res) => {
 router.put('/:date', async (req, res) => {
   try {
     const { date } = req.params;
-    const { invest, income, cash } = req.body || {};
+    const { invest, income, cash, purseCash } = req.body || {};
+
+    console.log('[PURSE BACKEND] Request body:', req.body);
+    console.log('[PURSE BACKEND] Model path:', require.resolve('../models/DailyRecord'));
+    console.log('[PURSE BACKEND] Schema fields:', Object.keys(DailyRecord.schema.paths));
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return res.status(400).json({ success: false, message: 'Invalid date' });
     }
 
     const updates = {};
-    for (const field of ['invest', 'income', 'cash']) {
+    for (const field of ['invest', 'income', 'cash', 'purseCash']) {
       if (Object.prototype.hasOwnProperty.call(req.body || {}, field)) {
         const value = req.body[field];
         if (value === '' || value === null || value === undefined) {
@@ -44,6 +48,9 @@ router.put('/:date', async (req, res) => {
       { $set: updates, $setOnInsert: { date } },
       { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
     );
+
+    console.log('[PURSE BACKEND] Saved record:', record?.toObject?.() ?? record);
+    console.log('[PURSE BACKEND] Saved purseCash:', record?.purseCash);
 
     return res.json({ success: true, record });
   } catch (error) {

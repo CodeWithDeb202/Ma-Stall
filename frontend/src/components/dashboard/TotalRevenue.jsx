@@ -65,7 +65,6 @@ function summarize(records, products, start, end) {
 
   const investment = daily.reduce((sum, r) => sum + Number(r.invest || 0), 0);
   const earning = daily.reduce((sum, r) => sum + Number(r.income || 0), 0);
-  const cash = daily.reduce((sum, r) => sum + Number(r.cash || 0), 0);
   const productExpenses = purchases.reduce(
     (sum, p) => sum + Number(p.price || 0), 0
   );
@@ -253,7 +252,9 @@ export default function TotalRevenue() {
 
   const [records, setRecords] = useState([]);
   const [products, setProducts] = useState([]);
+  const [stockProducts, setStockProducts] = useState([]);
   const [permanentStockTotal, setPermanentStockTotal] = useState(0);
+  const [permanentStockCount, setPermanentStockCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -399,15 +400,52 @@ export default function TotalRevenue() {
     );
   }, [records, products, allDates]);
 
-  const weekly = useMemo(
-    () => summarize(records, products, selectedWeek, weekEnd),
-    [records, products, selectedWeek, weekEnd]
-  );
+  const weekly = useMemo(() => {
+    const summary = summarize(records, products, selectedWeek, weekEnd);
 
-  const monthly = useMemo(
-    () => summarize(records, products, monthStart, monthEnd),
-    [records, products, monthStart, monthEnd]
-  );
+    const weeklyPermanentStockExpense = stockProducts
+      .filter(
+        (item) =>
+          item.category === 'Permanent Stock' &&
+          item.date >= selectedWeek &&
+          item.date <= weekEnd
+      )
+      .reduce(
+        (total, item) => total + Number(item.price || 0),
+        0
+      );
+
+    return {
+      ...summary,
+      invest: summary.invest + weeklyPermanentStockExpense,
+      profit: summary.profit - weeklyPermanentStockExpense,
+    };
+  }, [records, products, stockProducts, selectedWeek, weekEnd]);
+
+
+  const monthly = useMemo(() => {
+    const summary = summarize(records, products, monthStart, monthEnd);
+
+    const monthlyPermanentStockExpense = stockProducts
+      .filter(
+        (item) =>
+          item.category === 'Permanent Stock' &&
+          item.date &&
+          item.date >= monthStart &&
+          item.date <= monthEnd
+      )
+      .reduce(
+        (total, item) => total + Number(item.price || 0),
+        0
+      );
+
+    return {
+      ...summary,
+      invest: summary.invest + monthlyPermanentStockExpense,
+      profit: summary.profit - monthlyPermanentStockExpense,
+    };
+  }, [records, products, stockProducts, monthStart, monthEnd]);
+
 
   const yearly = useMemo(
     () => summarize(records, products, yearStart, yearEnd),
@@ -431,9 +469,9 @@ export default function TotalRevenue() {
     { label: 'Total Invest', value: money(overall.invest + permanentStockTotal) },
     { label: 'Total Earning', value: money(overall.income) },
     { label: 'Net Profit / Loss', value: money(overall.profit - permanentStockTotal) },
-    { label: 'Products Purchased', value: overall.productCount },
+    { label: 'Permanent Stock', value: permanentStockCount },
+    { label: 'Stock products', value: overall.productCount },
   ];
-
 
   useEffect(() => {
     let cancelled = false;
@@ -447,12 +485,23 @@ export default function TotalRevenue() {
         if (!response.ok) return;
 
         const result = await response.json();
+
         if (!cancelled && result.success) {
-          const total = (result.products || [])
-            .filter((product) => product.category === 'Permanent Stock')
-            .reduce((sum, product) => sum + Number(product.price || 0), 0);
+          setStockProducts(result.products || []);
+        }
+
+        if (!cancelled && result.success) {
+          const permanentStockProducts = (result.products || []).filter(
+            (product) => product.category === 'Permanent Stock'
+          );
+
+          const total = permanentStockProducts.reduce(
+            (sum, product) => sum + Number(product.price || 0),
+            0
+          );
 
           setPermanentStockTotal(total);
+          setPermanentStockCount(permanentStockProducts.length);
         }
       } catch (error) {
         console.error('Could not load permanent stock total:', error);
@@ -486,7 +535,7 @@ export default function TotalRevenue() {
               </h2>
               <p className="mt-1 text-sm">{status.description}</p>
               <p className="mt-2 text-sm font-semibold">
-                Recorded net result: {money(overall.profit)}
+                Recorded net result: {money(overall.profit - permanentStockTotal)}
               </p>
             </div>
           </div>
@@ -505,7 +554,12 @@ export default function TotalRevenue() {
           {cards.map((card) => (
             <article key={card.label} className="rounded-2xl border border-[#D8E5D8] bg-white p-5 shadow-sm">
               <p className="text-sm font-medium text-[#52715D]">{card.label}</p>
-              <p className="mt-3 wrap-break-word text-2xl font-bold text-[#176B45]">
+              <p
+                className={`mt-3 wrap-break-word text-2xl font-bold ${card.label === 'Total Invest'
+                  ? 'text-red-600'
+                  : 'text-[#176B45]'
+                  }`}
+              >
                 {loading ? '…' : card.value}
               </p>
             </article>

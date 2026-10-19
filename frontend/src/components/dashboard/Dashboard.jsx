@@ -16,6 +16,7 @@ export default function Dashboard() {
     const [invest, setInvest] = useState('');
     const [income, setIncome] = useState('');
     const [cash, setCash] = useState('');
+    const [purseCash, setPurseCash] = useState('');
     const [records, setRecords] = useState([]);
     const [selectedMonth, setSelectedMonth] = useState('');
     const availableMonths = [
@@ -55,6 +56,16 @@ export default function Dashboard() {
 
                 if (response.ok && result.success) {
                     const loadedRecords = result.records || [];
+
+                    console.log(
+                        '[PURSE DEBUG] Loaded purse values:',
+                        loadedRecords.map((record) => ({
+                            date: record.date,
+                            purseCash: record.purseCash,
+                            keys: Object.keys(record),
+                        }))
+                    );
+
                     setRecords(loadedRecords);
 
                     if (loadedRecords.length > 0) {
@@ -222,9 +233,15 @@ export default function Dashboard() {
         }
 
         const updates = {};
+        console.log('[PURSE DEBUG] Form values:', {
+            date,
+            purseCash,
+            purseCashType: typeof purseCash,
+        });
         if (invest !== '') updates.invest = Number(invest);
         if (income !== '') updates.income = Number(income);
         if (cash !== '') updates.cash = Number(cash);
+        if (purseCash !== '') updates.purseCash = Number(purseCash);
 
         if (Object.keys(updates).length === 0) {
             showWarning('At least one amount enter kara.');
@@ -235,6 +252,10 @@ export default function Dashboard() {
         setMessage('');
 
         try {
+            console.log(
+                '[PURSE DEBUG] API payload JSON:',
+                JSON.stringify({ date, updates }, null, 2)
+            );
             const response = await axiosFetch(`${apiUrl}/api/records/${date}`, {
                 method: 'PUT',
                 credentials: 'include',
@@ -243,6 +264,15 @@ export default function Dashboard() {
             });
 
             const result = await response.json();
+
+            console.log(
+                '[PURSE DEBUG] API response JSON:',
+                JSON.stringify({
+                    status: response.status,
+                    success: result.success,
+                    record: result.record,
+                }, null, 2)
+            );
 
             if (response.status === 401) {
                 window.location.replace('/');
@@ -268,6 +298,7 @@ export default function Dashboard() {
             setInvest('');
             setIncome('');
             setCash('');
+            setPurseCash('');
         } catch {
             showError('Backend re connect heiparuni. Internet/server connection check kara.');
         } finally {
@@ -310,14 +341,24 @@ export default function Dashboard() {
                             step: 'any',
                             placeholder: 'Enter cash',
                         },
+                        {
+                            name: 'purseCash',
+                            label: 'Total Cash in Purse (₹)',
+                            type: 'number',
+                            min: 0,
+                            step: 'any',
+                            placeholder: 'Enter total purse cash (optional)',
+                            required: false,
+                        },
                     ]}
-                    values={{ date, invest, income, cash }}
+                    values={{ date, invest, income, cash, purseCash }}
                     onChange={(name, value) => {
                         const setters = {
                             date: setDate,
                             invest: setInvest,
                             income: setIncome,
                             cash: setCash,
+                            purseCash: setPurseCash,
                         };
 
                         setters[name]?.(value);
@@ -331,6 +372,44 @@ export default function Dashboard() {
                     isSubmitting={isSaving}
                     message={message}
                 />
+
+                <section className="rounded-2xl border border-[#D8E5D8] bg-white p-5 shadow-sm">
+                    <h2 className="text-lg font-semibold text-[#174D35]">
+                        Total Cash in Purse
+                    </h2>
+
+                    {(() => {
+                        const purseRecords = records
+                            .filter((record) => Number(record.purseCash) > 0)
+                            .sort((a, b) => b.date.localeCompare(a.date));
+
+                        const latest = purseRecords[0];
+
+                        console.log('[PURSE DEBUG] All records:', records);
+
+                        console.log('[PURSE DEBUG] Purse records:', purseRecords);
+
+                        console.log('[PURSE DEBUG] Latest purse record:', latest);
+
+                        return latest ? (
+                            <>
+                                <p className="mt-2 text-sm text-[#52715D]">
+                                    Date: {new Date(`${latest.date}T00:00:00`).toLocaleDateString('en-IN')}
+                                </p>
+                                <p className="mt-2 text-2xl font-bold text-[#176B45]">
+                                    ₹{Number(latest.purseCash).toLocaleString('en-IN', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                    })}
+                                </p>
+                            </>
+                        ) : (
+                            <p className="mt-2 text-sm text-[#52715D]">
+                                No purse cash recorded yet.
+                            </p>
+                        );
+                    })()}
+                </section>
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -528,17 +607,29 @@ export default function Dashboard() {
                             {
                                 key: 'deb',
                                 label: 'Deb',
-                                render: (row) => `₹${row.deb.toFixed(2)}`,
+                                render: (row) => (
+                                    <span className="font-medium text-[#F87171]">
+                                        -₹{Math.abs(row.deb).toFixed(2)}
+                                    </span>
+                                ),
                             },
                             {
                                 key: 'puja',
                                 label: 'Puja',
-                                render: (row) => `₹${row.puja.toFixed(2)}`,
+                                render: (row) => (
+                                    <span className="font-medium text-[#F87171]">
+                                        -₹{Math.abs(row.puja).toFixed(2)}
+                                    </span>
+                                ),
                             },
                             {
                                 key: 'lija',
                                 label: 'Lija',
-                                render: (row) => `₹${row.lija.toFixed(2)}`,
+                                render: (row) => (
+                                    <span className="font-medium text-[#F87171]">
+                                        -₹{Math.abs(row.lija).toFixed(2)}
+                                    </span>
+                                ),
                             },
                             {
                                 key: 'invest',

@@ -312,6 +312,18 @@ export default function DailyBuyingProductList() {
       return;
     }
 
+    const normalizedName = productName.trim().toLowerCase();
+
+    const isDuplicate = products.some(
+      (item) =>
+        String(item.productName || '').trim().toLowerCase() === normalizedName
+    );
+
+    if (isDuplicate) {
+      showWarning(`"${productName.trim()}" product already exists. Duplicate product add karipariba nahi.`);
+      return;
+    }
+
     const numericPrice = Number(price);
     const quantityText = String(quantity ?? '').trim() || '1';
 
@@ -388,6 +400,28 @@ export default function DailyBuyingProductList() {
   async function handleUpdateProduct(event) {
     event.preventDefault();
     if (!editingProduct) return;
+
+    const normalizedName = String(editValues.productName || '')
+      .trim()
+      .toLowerCase();
+
+    if (!normalizedName) {
+      setEditMessage('Product name khali rakhipariba nahi.');
+      return;
+    }
+
+    const isDuplicate = products.some(
+      (item) =>
+        item._id !== editingProduct._id &&
+        String(item.productName || '').trim().toLowerCase() === normalizedName
+    );
+
+    if (isDuplicate) {
+      setEditMessage(
+        `"${String(editValues.productName).trim()}" product already exists. Duplicate name use karipariba nahi.`
+      );
+      return;
+    }
 
     setIsEditing(true);
     setEditMessage('');
@@ -601,14 +635,27 @@ export default function DailyBuyingProductList() {
                   label: 'Sl. No.',
                   render: (row) => selectedProducts.findIndex((item) => item._id === row._id) + 1,
                 },
+
                 {
                   key: 'productName',
                   label: 'Product Name',
+                  render: (row) => {
+                    const name = String(row.productName || '').trim();
+
+                    return name
+                      ? name.charAt(0).toUpperCase() + name.slice(1)
+                      : '';
+                  },
                 },
+
                 {
                   key: 'price',
                   label: 'Price',
-                  render: (row) => formatMoney(row.price),
+                  render: (row) => (
+                    <span className="font-semibold text-red-600">
+                      {formatMoney(row.price)}
+                    </span>
+                  ),
                 },
                 {
                   key: 'quantity',
@@ -660,7 +707,7 @@ export default function DailyBuyingProductList() {
                 key: 'totalExpense',
                 label: 'Total Expense',
                 render: () => (
-                  <span className="font-semibold text-[#174D35]">
+                  <span className="font-semibold text-red-600">
                     {formatMoney(totalExpense)}
                   </span>
                 ),
@@ -754,9 +801,14 @@ export default function DailyBuyingProductList() {
 
                   return (
                     <div className="flex min-w-24 flex-col items-start gap-2">
-                      <span className={`font-semibold ${share < 0 ? 'text-red-600' : 'text-[#176B45]'
-                        }`}>
-                        {formatMoney(share)}
+                      <span
+                        className={`rounded-md px-2 py-1 font-semibold ${share < 0
+                          ? 'bg-red-50 text-red-600'
+                          : 'bg-green-50 text-[#176B45]'
+                          }`}
+                      >
+                        {share > 0 ? '+' : share < 0 ? '−' : ''}
+                        {formatMoney(Math.abs(share))}
                       </span>
                       <button
                         type="button"

@@ -281,7 +281,15 @@ export default function StockProducts() {
     { key: 'date', label: 'Date', render: row => displayDate(row.date) },
     { key: 'productName', label: 'Product Name', render: row => capitalizeProductName(row.productName) },
     { key: 'quantity', label: 'Quantity', render: row => row.quantity || '—' },
-    { key: 'price', label: 'Price', render: row => money(row.price) }
+    {
+      key: 'price',
+      label: 'Price',
+      render: row => (
+        <span className="font-semibold text-red-600">
+          {money(row.price)}
+        </span>
+      ),
+    }
   ];
 
   const stockColumns = [
