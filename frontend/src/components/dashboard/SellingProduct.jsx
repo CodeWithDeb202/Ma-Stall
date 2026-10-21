@@ -88,13 +88,21 @@ export default function SellingProduct() {
     }
   }, [request]);
   useEffect(() => {
-    let storedDate = '';
-    try {
-      storedDate = window.localStorage.getItem(selectedDateKey) || '';
-    } catch {
-      storedDate = '';
-    }
-    loadData(storedDate);
+    const controller = new AbortController();
+
+    const startLoading = async () => {
+      let storedDate = '';
+      try {
+        storedDate = window.localStorage.getItem(selectedDateKey) || '';
+      } catch {
+        storedDate = '';
+      }
+      await loadData(storedDate);
+    };
+
+    startLoading();
+
+    return () => controller.abort();
   }, [loadData]);
   const recordByProduct = useMemo(() => {
     return new Map(records.map((record) => [
@@ -381,7 +389,7 @@ export default function SellingProduct() {
       </div>
       {editingId && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-100 flex items-center justify-center bg-black/50 p-4"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget && !actionBusyId) {
               setEditingId('');
