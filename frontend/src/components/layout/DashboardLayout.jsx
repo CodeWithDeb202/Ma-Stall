@@ -31,7 +31,9 @@ export default function DashboardLayout({ children }) {
           ? 'daily-buying'
           : pathname === '/dashboard/total-revenue'
             ? 'total-revenue'
-            : pathname === '/dashboard'
+            : pathname === '/dashboard/selling-product'
+              ? 'selling-product'
+              : pathname === '/dashboard'
               ? 'daily-invest'
               : '';
 

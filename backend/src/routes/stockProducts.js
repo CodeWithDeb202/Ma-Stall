@@ -17,7 +17,7 @@ const validDate = date => {
 
 router.get('/', async (req, res) => {
   try {
-    const products = await StockProduct.find({}).sort({ createdAt: 1 }).lean();
+    const products = await StockProduct.find({}).sort({ updatedAt: -1, createdAt: -1 }).lean();
     res.json({ success: true, products });
   } catch (error) {
     console.error('Load stock products:', error.message);
