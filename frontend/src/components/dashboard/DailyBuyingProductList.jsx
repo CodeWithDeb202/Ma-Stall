@@ -283,12 +283,7 @@ export default function DailyBuyingProductList() {
   const selectedDailyRecord = dailyRecords.find(
     (record) => record.date === selectedDate
   );
-
-  const totalProfit = selectedDailyRecord
-    ? Number(selectedDailyRecord.income || 0) -
-    Number(selectedDailyRecord.invest || 0) -
-    Number(selectedDailyRecord.cash || 0)
-    : 0;
+  const totalProfit = selectedDailyRecord ? Number(selectedDailyRecord.income || 0) - Number(selectedDailyRecord.invest || 0) - Number(selectedDailyRecord.cash || 0) : 0;
 
   const permanentStockExpense = stockProducts
     .filter(

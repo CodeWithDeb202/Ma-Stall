@@ -17,6 +17,11 @@ const dailyRecordSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    stockKharcha: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     income: {
       type: Number,
       default: 0,

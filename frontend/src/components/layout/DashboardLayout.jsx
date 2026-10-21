@@ -43,6 +43,7 @@ export default function DashboardLayout({ children }) {
       'daily-invest': '/dashboard',
       'daily-buying': '/dashboard/daily-buying-product-list',
       'total-revenue': '/dashboard/total-revenue',
+      'selling-product': '/dashboard/selling-product',
     };
 
     const target = routes[section];

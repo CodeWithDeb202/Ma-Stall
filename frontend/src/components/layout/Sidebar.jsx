@@ -8,6 +8,7 @@ export default function Sidebar({ activeSection, onSectionChange }) {
         { id: 'daily-buying', label: 'Daily Buying Product List' },
         { id: 'stock-products', label: 'Stock' },
         { id: 'total-revenue', label: 'Total Revenue' },
+        { id: 'selling-product', label: 'Selling Product' },
     ];
 
     return (

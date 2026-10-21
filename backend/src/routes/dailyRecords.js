@@ -24,7 +24,7 @@ if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     }
 
     const updates = {};
-    for (const field of ['invest', 'income', 'cash', 'purseCash']) {
+    for (const field of ['invest', 'stockKharcha', 'income', 'cash', 'purseCash']) {
       if (Object.prototype.hasOwnProperty.call(req.body || {}, field)) {
         const value = req.body[field];
         if (value === '' || value === null || value === undefined) {

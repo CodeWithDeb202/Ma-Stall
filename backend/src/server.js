@@ -41,6 +41,7 @@ app.use('/api/auth', rateLimit({
 }));
 
 app.use('/api/records', require('./routes/dailyRecords'));
+app.use('/api/daily-investment-dividing', require('./routes/dailyInvestmentDividing'));
 app.use('/api/daily-buying-products', require('./routes/dailyBuyingProducts'));
 app.use('/api/purchase-products', require('./routes/purchaseProducts'));
 app.use('/api/stock-products', require('./routes/stockProducts'));
@@ -59,3 +60,5 @@ connectDatabase().then(() => {
   console.error("Failed to connect to MongoDB:", error.message);
   process.exit(1);
 });
+
+app.use('/api/selling-products', require('./routes/sellingProducts'));

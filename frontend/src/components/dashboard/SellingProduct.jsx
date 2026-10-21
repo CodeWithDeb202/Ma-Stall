@@ -1,0 +1,439 @@
+'use client';
+import axiosFetch from '@/lib/axios-fetch';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import DashboardLayout from '../layout/DashboardLayout';
+import apiUrl from '@/services/api';
+import { showSuccess, showError } from '@/lib/toast';
+const selectedDateKey = 'ma-stall-selling-product-date';
+const money = (value) =>
+  `\u20B9${Number(value || 0).toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+const today = () => {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+const displayDate = (date) => {
+  if (!date) return '';
+  const [year, month, day] = date.split('-');
+  return `${day}-${month}-${year}`;
+};
+export default function SellingProduct() {
+  const [products, setProducts] = useState([]);
+  const [records, setRecords] = useState([]);
+  const [dates, setDates] = useState([]);
+  const [selectedDate, setSelectedDate] = useState('');
+  const [menuItem, setMenuItem] = useState('');
+  const [price, setPrice] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [savingProduct, setSavingProduct] = useState(false);
+  const [editingId, setEditingId] = useState('');
+  const [editingPrice, setEditingPrice] = useState('');
+  const [actionBusyId, setActionBusyId] = useState('');
+  const [savingIds, setSavingIds] = useState([]);
+  const [error, setError] = useState('');
+  const request = useCallback(async (url, options = {}) => {
+    const response = await axiosFetch(`${apiUrl}${url}`, {
+      ...options,
+      credentials: 'include',
+      cache: 'no-store',
+      headers: {
+        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(options.headers || {}),
+      },
+    });
+    if (response.status === 401) {
+      window.location.replace('/');
+      throw new Error('Session expire heichi. Punithare login kara.');
+    }
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || 'Request fail hela.');
+    }
+    return result;
+  }, []);
+  const loadData = useCallback(async (date) => {
+    setLoading(true);
+    setError('');
+    try {
+      const query = date ? `?date=${encodeURIComponent(date)}` : '';
+      const result = await request(`/api/selling-products${query}`);
+      setProducts(result.products || []);
+      setDates(result.dates || []);
+      setRecords(result.records || []);
+      const availableDates = result.dates || [];
+      const nextDate = date && availableDates.includes(date)
+        ? date
+        : availableDates.includes(today())
+          ? today()
+          : availableDates[0] || today();
+      setSelectedDate(nextDate);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(selectedDateKey, nextDate);
+      }
+      if (date !== nextDate) {
+        const nextQuery = `?date=${encodeURIComponent(nextDate)}`;
+        const nextResult = await request(`/api/selling-products${nextQuery}`);
+        setRecords(nextResult.records || []);
+      }
+    } catch (err) {
+      setError(err.message || 'Selling products load heiparila nahi.');
+      showError(err.message || 'Selling products load heiparila nahi.');
+    } finally {
+      setLoading(false);
+    }
+  }, [request]);
+  useEffect(() => {
+    let storedDate = '';
+    try {
+      storedDate = window.localStorage.getItem(selectedDateKey) || '';
+    } catch {
+      storedDate = '';
+    }
+    loadData(storedDate);
+  }, [loadData]);
+  const recordByProduct = useMemo(() => {
+    return new Map(records.map((record) => [
+      String(record.sellingProductId),
+      Number(record.quantity) || 0,
+    ]));
+  }, [records]);
+  const totalRevenue = useMemo(() => {
+    return products.reduce((sum, product) => {
+      const quantity = recordByProduct.get(String(product._id)) || 0;
+      return sum + Number(product.price || 0) * quantity;
+    }, 0);
+  }, [products, recordByProduct]);
+  async function addMenuItem(event) {
+    event.preventDefault();
+    if (!menuItem.trim() || price === '' || !Number.isFinite(Number(price)) || Number(price) < 0) {
+      showError('Menu Item o valid Price enter kara.');
+      return;
+    }
+    setSavingProduct(true);
+    try {
+      await request('/api/selling-products', {
+        method: 'POST',
+        body: JSON.stringify({
+          menuItem: menuItem.trim(),
+          price: Number(price),
+        }),
+      });
+      setMenuItem('');
+      setPrice('');
+      showSuccess('Menu item successfully saved.');
+      await loadData(selectedDate || today());
+    } catch (err) {
+      showError(err.message || 'Menu item save heiparila nahi.');
+    } finally {
+      setSavingProduct(false);
+    }
+  }
+  async function changeQuantity(product, delta) {
+    const id = String(product._id);
+    const current = recordByProduct.get(id) || 0;
+    const nextQuantity = Math.max(0, current + delta);
+    if (nextQuantity === current || savingIds.includes(id)) return;
+    setSavingIds((previous) => [...previous, id]);
+    setError('');
+    try {
+      const result = await request('/api/selling-products/quantity', {
+        method: 'PUT',
+        body: JSON.stringify({
+          date: selectedDate || today(),
+          sellingProductId: product._id,
+          quantity: nextQuantity,
+        }),
+      });
+      setRecords((previous) => {
+        const remaining = previous.filter(
+          (record) => String(record.sellingProductId) !== id
+        );
+        return [...remaining, result.record];
+      });
+      setDates((previous) => [...new Set([selectedDate || today(), ...previous])]
+        .sort((a, b) => b.localeCompare(a)));
+    } catch (err) {
+      showError(err.message || 'Quantity save heiparila nahi.');
+    } finally {
+      setSavingIds((previous) => previous.filter((item) => item !== id));
+    }
+  }
+  async function savePrice(product) {
+    const id = String(product._id);
+    if (editingPrice === '' || !Number.isFinite(Number(editingPrice)) || Number(editingPrice) < 0) {
+      showError('Valid Price enter kara.');
+      return;
+    }
+    setActionBusyId(id);
+    try {
+      await request(`/api/selling-products/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ price: Number(editingPrice) }),
+      });
+      setProducts((previous) => previous.map((item) =>
+        String(item._id) === id ? { ...item, price: Number(editingPrice) } : item
+      ));
+      setEditingId('');
+      setEditingPrice('');
+      showSuccess('Price successfully update hela.');
+    } catch (err) {
+      showError(err.message || 'Price update heiparila nahi.');
+    } finally {
+      setActionBusyId('');
+    }
+  }
+  async function deleteProduct(product) {
+    const confirmed = window.confirm(
+      `"${product.menuItem}" delete karibe ki? Eha delete kale sabu date ra selling records madhya delete heba.`
+    );
+    if (!confirmed) return;
+    const id = String(product._id);
+    setActionBusyId(id);
+    try {
+      await request(`/api/selling-products/${id}`, { method: 'DELETE' });
+      setProducts((previous) => previous.filter((item) => String(item._id) !== id));
+      setRecords((previous) => previous.filter((record) => String(record.sellingProductId) !== id));
+      showSuccess('Menu item delete hela.');
+    } catch (err) {
+      showError(err.message || 'Menu item delete heiparila nahi.');
+    } finally {
+      setActionBusyId('');
+    }
+  }
+  async function handleDateChange(value) {
+    setSelectedDate(value);
+    try {
+      window.localStorage.setItem(selectedDateKey, value);
+    } catch {
+      // Date remains selected for this session if storage is unavailable.
+    }
+    await loadData(value);
+  }
+  return (
+    <DashboardLayout>
+      <div className="mx-auto w-full max-w-7xl space-y-6 p-4 text-[#174D35] md:p-6">
+        <header>
+          <p className="text-sm font-semibold uppercase tracking-wider text-[#52715D]">
+            Sales management
+          </p>
+          <h1 className="mt-1 text-2xl font-bold md:text-3xl">Selling Product</h1>
+          <p className="mt-2 text-sm text-[#52715D]">
+            Menu item add kara, date-wise selling quantity record rakha.
+          </p>
+        </header>
+        <section className="rounded-2xl border border-[#D8E5D8] bg-white p-4 shadow-sm md:p-6">
+          <h2 className="mb-4 text-lg font-bold">Add Menu Item</h2>
+          <form onSubmit={addMenuItem} className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto] sm:items-end">
+            <label className="block text-sm font-semibold">
+              Menu Item
+              <input
+                value={menuItem}
+                onChange={(event) => setMenuItem(event.target.value)}
+                maxLength={150}
+                placeholder="e.g. Masala Dosa"
+                required
+                className="mt-1.5 w-full rounded-xl border border-[#D8E5D8] px-3 py-3 font-normal outline-none focus:border-[#28784F] focus:ring-2 focus:ring-[#28784F]/15"
+              />
+            </label>
+            <label className="block text-sm font-semibold">
+              Price {'\u20B9'}
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={price}
+                onChange={(event) => setPrice(event.target.value)}
+                placeholder="60"
+                required
+                className="mt-1.5 w-full rounded-xl border border-[#D8E5D8] px-3 py-3 font-normal outline-none focus:border-[#28784F] focus:ring-2 focus:ring-[#28784F]/15"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={savingProduct}
+              className="rounded-xl bg-[#176B45] px-5 py-3 font-semibold text-white transition hover:bg-[#125638] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {savingProduct ? 'Saving...' : '+ Add Item'}
+            </button>
+          </form>
+        </section>
+        <section className="rounded-2xl border border-[#D8E5D8] bg-white p-4 shadow-sm md:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <label className="block w-full text-sm font-semibold sm:max-w-xs">
+              Select Selling Date
+              <select
+                value={selectedDate}
+                onChange={(event) => handleDateChange(event.target.value)}
+                className="mt-1.5 w-full rounded-xl border border-[#D8E5D8] bg-white px-3 py-3 outline-none focus:border-[#28784F]"
+              >
+                {dates.map((date) => (
+                  <option key={date} value={date}>{displayDate(date)}</option>
+                ))}
+                {selectedDate && !dates.includes(selectedDate) && (
+                  <option value={selectedDate}>{displayDate(selectedDate)}</option>
+                )}
+              </select>
+            </label>
+            <div className="rounded-xl bg-[#E8F3E9] px-4 py-3">
+              <p className="text-xs font-semibold text-[#52715D]">TOTAL SELLING</p>
+              <p className="mt-1 text-xl font-bold">{money(totalRevenue)}</p>
+            </div>
+          </div>
+          {error && (
+            <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+            </p>
+          )}
+          {loading ? (
+            <div className="py-12 text-center text-sm text-[#52715D]">Loading selling records...</div>
+          ) : products.length === 0 ? (
+            <div className="py-12 text-center">
+              <p className="font-semibold">No menu items added yet.</p>
+              <p className="mt-1 text-sm text-[#52715D]">Upara form re Menu Item o Price add kara.</p>
+            </div>
+          ) : (
+            <div className="mt-5 overflow-x-auto rounded-xl border border-[#D8E5D8]">
+              <table className="w-full min-w-170 border-collapse text-left text-sm">
+                <thead className="bg-[#F1F7F0] text-[#174D35]">
+                  <tr>
+                    <th className="px-4 py-3 font-bold">Sl No.</th>
+                    <th className="px-4 py-3 font-bold">Menu Item</th>
+                    <th className="px-4 py-3 text-right font-bold">Price</th>
+                    <th className="px-4 py-3 text-center font-bold">How Many Item Sell</th>
+                    <th className="px-4 py-3 text-right font-bold">Total</th>
+                    <th className="px-4 py-3 text-center font-bold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E5EEE4]">
+                  {products.map((product, index) => {
+                    const quantity = recordByProduct.get(String(product._id)) || 0;
+                    const saving = savingIds.includes(String(product._id));
+                    return (
+                      <tr key={product._id} className="transition hover:bg-[#FAFCF9]">
+                        <td className="px-4 py-3 text-[#52715D]">{index + 1}</td>
+                        <td className="px-4 py-3 font-semibold">{product.menuItem.charAt(0).toUpperCase() + product.menuItem.slice(1)}</td>
+                        <td className="px-4 py-3 text-right tabular-nums">{money(product.price)}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => changeQuantity(product, -1)}
+                              disabled={quantity === 0 || saving}
+                              aria-label={`Decrease ${product.menuItem} quantity`}
+                              className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#D8E5D8] text-lg font-bold hover:bg-[#E8F3E9] disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              -
+                            </button>
+                            <span className="min-w-8 text-center text-base font-bold tabular-nums">{quantity}</span>
+                            <button
+                              type="button"
+                              onClick={() => changeQuantity(product, 1)}
+                              disabled={saving}
+                              aria-label={`Increase ${product.menuItem} quantity`}
+                              className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#176B45] text-lg font-bold text-white hover:bg-[#125638] disabled:cursor-wait disabled:opacity-60"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold tabular-nums">
+                          {money(Number(product.price) * quantity)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => { setEditingId(String(product._id)); setEditingPrice(String(product.price)); }}
+                              disabled={Boolean(actionBusyId)}
+                              className="rounded-lg border border-[#176B45] px-3 py-2 text-xs font-semibold text-[#176B45] disabled:opacity-60"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteProduct(product)}
+                              disabled={Boolean(actionBusyId)}
+                              className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+                            >
+                              {actionBusyId === String(product._id) ? 'Please wait...' : 'Delete'}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot className="bg-[#F1F7F0]">
+                  <tr>
+                    <td colSpan={5} className="px-4 py-3 text-right font-bold">Total</td>
+                    <td className="px-4 py-3 text-right font-bold tabular-nums">{money(totalRevenue)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
+      {editingId && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !actionBusyId) {
+              setEditingId('');
+              setEditingPrice('');
+            }
+          }}
+        >
+          <section role="dialog" aria-modal="true" aria-labelledby="edit-selling-price-title" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 id="edit-selling-price-title" className="text-xl font-bold text-[#174D35]">Edit Menu Price</h2>
+                <p className="mt-1 text-sm text-[#52715D]">
+                  {products.find((item) => String(item._id) === editingId)?.menuItem || 'Menu Item'}
+                </p>
+              </div>
+              <button type="button" aria-label="Close modal" onClick={() => { setEditingId(''); setEditingPrice(''); }} disabled={Boolean(actionBusyId)} className="rounded-lg px-2 py-1 text-xl text-gray-500 hover:bg-gray-100 disabled:opacity-50">?</button>
+            </div>
+            <form onSubmit={(event) => {
+              event.preventDefault();
+              const product = products.find((item) => String(item._id) === editingId);
+              if (product) savePrice(product);
+            }}>
+              <label className="block text-sm font-semibold text-[#174D35]">
+                Price ({'\u20B9'})
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  value={editingPrice}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    if (/^\d*\.?\d{0,2}$/.test(value)) setEditingPrice(value);
+                  }}
+                  onWheel={(event) => event.currentTarget.blur()}
+                  aria-label="Edit menu item price"
+                  className="mt-2 w-full rounded-xl border border-[#D8E5D8] px-4 py-3 text-lg font-medium outline-none focus:border-[#28784F] focus:ring-2 focus:ring-[#28784F]/15"
+                  required
+                  autoFocus
+                />
+              </label>
+              <p className="mt-2 text-xs text-[#52715D]">Kebala price change heba; menu item name change hebani.</p>
+              <div className="mt-6 flex justify-end gap-3">
+                <button type="button" onClick={() => { setEditingId(''); setEditingPrice(''); }} disabled={Boolean(actionBusyId)} className="rounded-xl border border-[#D8E5D8] px-4 py-2.5 font-semibold text-[#174D35] disabled:opacity-50">Cancel</button>
+                <button type="submit" disabled={Boolean(actionBusyId) || editingPrice === '' || !Number.isFinite(Number(editingPrice)) || Number(editingPrice) < 0} className="rounded-xl bg-[#176B45] px-5 py-2.5 font-semibold text-white hover:bg-[#125638] disabled:cursor-not-allowed disabled:opacity-50">
+                  {actionBusyId === editingId ? 'Saving...' : 'Save Price'}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+    </DashboardLayout>
+  );
+}
+

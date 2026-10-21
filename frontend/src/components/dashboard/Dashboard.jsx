@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import axiosFetch from "@/lib/axios-fetch";
 
 import { useEffect, useMemo, useState } from 'react';
@@ -22,10 +22,22 @@ function getTodayDate() {
 export default function Dashboard() {
     const [date, setDate] = useState(getTodayDate);
     const [invest, setInvest] = useState('');
+    const [stockKharcha, setStockKharcha] = useState('');
     const [income, setIncome] = useState('');
     const [cash, setCash] = useState('');
     const [purseCash, setPurseCash] = useState('');
     const [records, setRecords] = useState([]);
+    const [dividingRecords, setDividingRecords] = useState([]);
+    const [dividingDate, setDividingDate] = useState(getTodayDate);
+    const [dividingDailyKharcha, setDividingDailyKharcha] = useState('');
+    const [dividingStockKharcha, setDividingStockKharcha] = useState('');
+    const [dividingIncome, setDividingIncome] = useState('');
+    const [dividingCash, setDividingCash] = useState('');
+    const [isDividingSaving, setIsDividingSaving] = useState(false);
+    const [editingDividingRecord, setEditingDividingRecord] = useState(null);
+    const [dividingEditValues, setDividingEditValues] = useState({});
+    const [dividingDeleteTarget, setDividingDeleteTarget] = useState(null);
+    const [isDividingDeleting, setIsDividingDeleting] = useState(false);
     const [purchaseProducts, setPurchaseProducts] = useState([]);
 
     const dailyUsageByNextDate = useMemo(() => {
@@ -111,6 +123,21 @@ export default function Dashboard() {
         }
 
         loadRecords();
+
+        async function loadDividingRecords() {
+            try {
+                const response = await axiosFetch(apiUrl + '/api/daily-investment-dividing', { credentials: 'include', cache: 'no-store' });
+                if (response.status === 401) { window.location.replace('/'); return; }
+                if (!response.ok) throw new Error('Failed to load dividing records');
+                const result = await response.json();
+                const records = Array.isArray(result) ? result : (Array.isArray(result.records) ? result.records : []);
+                setDividingRecords(records.filter((record) => record && typeof record.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(record.date)));
+            } catch (error) {
+                showError(error.message || 'Could not load Daily Investment Dividing records');
+            }
+        }
+
+        loadDividingRecords();
 
         async function loadPurchaseProducts() {
             try {
@@ -283,6 +310,7 @@ export default function Dashboard() {
 
         const updates = {};
         if (invest !== '') updates.invest = Number(invest);
+        if (stockKharcha !== '') updates.stockKharcha = Number(stockKharcha);
         if (income !== '') updates.income = Number(income);
         if (cash !== '') updates.cash = Number(cash);
         if (purseCash !== '') updates.purseCash = Number(purseCash);
@@ -327,6 +355,7 @@ export default function Dashboard() {
             showSuccess('Record successfully save hela.');
             setDate(getTodayDate());
             setInvest('');
+            setStockKharcha('');
             setIncome('');
             setCash('');
             setPurseCash('');
@@ -337,10 +366,27 @@ export default function Dashboard() {
         }
     }
 
+    async function saveDividingRecord(event) {
+        event.preventDefault();
+        if (!dividingDate || isDividingSaving) { showWarning('Date select kara.'); return; }
+        const values = { dailyKharcha: Number(dividingDailyKharcha || 0), stockKharcha: Number(dividingStockKharcha || 0), income: Number(dividingIncome || 0), cash: Number(dividingCash || 0) };
+        if ([dividingDailyKharcha, dividingStockKharcha, dividingIncome, dividingCash].some((value) => value !== '' && (!Number.isFinite(Number(value)) || Number(value) < 0))) { showWarning('Amounts valid positive number heba darkar.'); return; }
+        setIsDividingSaving(true);
+        try {
+            const response = await axiosFetch(apiUrl + '/api/daily-investment-dividing/' + dividingDate, { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values) });
+            const result = await response.json();
+            if (response.status === 401) { window.location.replace('/'); return; }
+            if (!response.ok) { showError(result.message || 'Dividing record save heiparila nahi.'); return; }
+            setDividingRecords((previous) => [result, ...previous.filter((record) => record.date !== result.date)].sort((a, b) => b.date.localeCompare(a.date)));
+            showSuccess('Daily Investment Dividing record save hela.');
+            setDividingDate(getTodayDate()); setDividingDailyKharcha(''); setDividingStockKharcha(''); setDividingIncome(''); setDividingCash('');
+        } catch { showError('Dividing record save heiparila nahi.'); } finally { setIsDividingSaving(false); }
+    }
+
     return (
         <DashboardLayout>
             <div className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-6">
-                <Form title="Daily Invest & Income"
+                <Form title="Daily Kharcha & Income"
                     fields={[
                         {
                             name: 'date',
@@ -350,15 +396,15 @@ export default function Dashboard() {
                         },
                         {
                             name: 'invest',
-                            label: 'Invest (₹)',
+                            label: 'Invest \u20B9',
                             type: 'number',
                             min: 0,
                             step: 'any',
-                            placeholder: 'Enter investment',
+                            placeholder: 'Enter daily kharcha',
                         },
                         {
                             name: 'income',
-                            label: 'Income (₹)',
+                            label: 'Income \u20B9',
                             type: 'number',
                             min: 0,
                             step: 'any',
@@ -366,7 +412,7 @@ export default function Dashboard() {
                         },
                         {
                             name: 'cash',
-                            label: 'Cash (₹)',
+                            label: 'Cash \u20B9',
                             type: 'number',
                             min: 0,
                             step: 'any',
@@ -374,7 +420,7 @@ export default function Dashboard() {
                         },
                         {
                             name: 'purseCash',
-                            label: 'Total Cash in Purse (₹)',
+                            label: 'Total Cash in Purse \u20B9',
                             type: 'number',
                             min: 0,
                             step: 'any',
@@ -382,11 +428,12 @@ export default function Dashboard() {
                             required: false,
                         },
                     ]}
-                    values={{ date, invest, income, cash, purseCash }}
+                    values={{ date, invest, stockKharcha, income, cash, purseCash }}
                     onChange={(name, value) => {
                         const setters = {
                             date: setDate,
                             invest: setInvest,
+                            stockKharcha: setStockKharcha,
                             income: setIncome,
                             cash: setCash,
                             purseCash: setPurseCash,
@@ -422,7 +469,7 @@ export default function Dashboard() {
                                     Date: {new Date(`${latest.date}T00:00:00`).toLocaleDateString('en-IN')}
                                 </p>
                                 <p className="mt-2 text-2xl font-bold text-[#176B45]">
-                                    ₹{Number(latest.purseCash).toLocaleString('en-IN', {
+                                    {'\u20B9'}{Number(latest.purseCash).toLocaleString('en-IN', {
                                         minimumFractionDigits: 2,
                                         maximumFractionDigits: 2,
                                     })}
@@ -481,7 +528,7 @@ export default function Dashboard() {
                                 label: 'Invest',
                                 render: (row) => (
                                     <span className="font-semibold text-red-600">
-                                        ₹{(
+                                        {'\u20B9'}{(
                                             row.invest ? Number(row.invest) : (Number(row.dailyUsage) || 0)
                                         ).toLocaleString('en-IN', {
                                             minimumFractionDigits: 0,
@@ -495,7 +542,7 @@ export default function Dashboard() {
                                 label: 'Income',
                                 render: (row) => (
                                     <span className="font-semibold text-green-700">
-                                        ₹{(row.income || 0).toLocaleString('en-IN')}
+                                        {'\u20B9'} {(row.income || 0).toLocaleString('en-IN')}
                                     </span>
                                 ),
                             },
@@ -503,7 +550,7 @@ export default function Dashboard() {
                                 key: 'cash',
                                 label: 'Cash',
                                 render: (row) =>
-                                    `₹${(row.cash || 0).toLocaleString('en-IN')}`,
+                                    `\u20B9${(row.cash || 0).toLocaleString('en-IN')}`,
                             },
                             {
                                 key: 'profit',
@@ -518,7 +565,7 @@ export default function Dashboard() {
                                                 : 'text-[#176B45]'
                                                 }`}
                                         >
-                                            {profit < 0 ? '-' : profit > 0 ? '+' : ''}₹
+                                            {profit < 0 ? '-' : profit > 0 ? '+' : ''}{'\u20B9'}
                                             {Math.abs(profit).toLocaleString('en-IN')}
                                         </span>
                                     );
@@ -535,7 +582,7 @@ export default function Dashboard() {
                                     onClick={() => openEditModal(row)}
                                     className="rounded-lg border border-[#BBD7C1] px-3 py-2 font-medium text-[#176B45] hover:bg-[#F1F7F0]"
                                 >
-                                    ✎ Edit
+                                    Edit
                                 </button>
 
                                 <button
@@ -546,7 +593,7 @@ export default function Dashboard() {
                                 >
                                     {deletingDate === row.date
                                         ? 'Deleting...'
-                                        : '🗑 Delete'}
+                                        : 'Delete'}
                                 </button>
                             </div>
                         )}
@@ -561,20 +608,20 @@ export default function Dashboard() {
                         }}
                     >
                         <Form
-                            title={`Edit Record — ${editingRecord.date}`}
+                            title={`Edit Record â€” ${editingRecord.date}`}
                             fields={[
                                 {
                                     name: 'invest',
-                                    label: 'Invest (₹)',
+                                    label: 'Invest \u20B9',
                                     type: 'number',
                                     min: 0,
                                     step: 'any',
                                     required: true,
-                                    placeholder: 'Enter investment',
+                                    placeholder: 'Enter daily kharcha',
                                 },
                                 {
                                     name: 'income',
-                                    label: 'Income (₹)',
+                                    label: 'Income \u20B9',
                                     type: 'number',
                                     min: 0,
                                     step: 'any',
@@ -583,7 +630,7 @@ export default function Dashboard() {
                                 },
                                 {
                                     name: 'cash',
-                                    label: 'Cash (₹)',
+                                    label: 'Cash \u20B9',
                                     type: 'number',
                                     min: 0,
                                     step: 'any',
@@ -613,105 +660,75 @@ export default function Dashboard() {
                     </div>
                 )}
 
-                {/* Daily Investment Dividing Table */}
+                <div className="mb-6 rounded-2xl border border-[#D8E5D8] bg-white p-5 shadow-sm">
+                    <h3 className="mb-4 font-semibold text-[#174D35]">{editingDividingRecord ? 'Edit Daily Investment Dividing' : 'Add Daily Investment Dividing'}</h3>
+                    <Form
+                        title="Daily Investment Dividing Entry"
+                        fields={[
+                            { name: 'date', label: 'Date', type: 'date', required: true },
+                            { name: 'dailyKharcha', label: 'Daily Kharcha \u20B9', type: 'number', required: true },
+                            { name: 'stockKharcha', label: 'Stock Kharcha \u20B9', type: 'number', required: true },
+                            { name: 'income', label: 'Total Income \u20B9', type: 'number', required: true },
+                            { name: 'cash', label: 'Cash \u20B9', type: 'number', required: true },
+                        ]}
+                        values={{
+                            date: dividingDate,
+                            dailyKharcha: dividingDailyKharcha,
+                            stockKharcha: dividingStockKharcha,
+                            income: dividingIncome,
+                            cash: dividingCash,
+                        }}
+                        onChange={(name, value) => {
+                            const setters = {
+                                date: setDividingDate,
+                                dailyKharcha: setDividingDailyKharcha,
+                                stockKharcha: setDividingStockKharcha,
+                                income: setDividingIncome,
+                                cash: setDividingCash,
+                            };
+                            setters[name]?.(value);
+                        }}
+                        onSubmit={saveDividingRecord}
+                        submitText={editingDividingRecord ? 'Update Dividing Record' : 'Save Dividing Record'}
+                        isSubmitting={isDividingSaving}
+                    />
+                    {editingDividingRecord && (
+                        <button type="button" onClick={() => { setEditingDividingRecord(null); setDividingDate(getTodayDate()); setDividingDailyKharcha(''); setDividingStockKharcha(''); setDividingIncome(''); setDividingCash(''); }} className="mt-3 rounded-lg border border-gray-300 px-4 py-2 text-sm">Cancel Edit</button>
+                    )}
+                </div>
+
+                {/* Daily Kharcha and Profit Table */}
                 <div className="overflow-hidden rounded-2xl border border-[#D8E5D8] bg-white shadow-sm">
                     <div className="border-b border-[#D8E5D8] px-5 py-4">
-                        <h3 className="font-semibold text-[#174D35]">
-                            Daily Investment Dividing
-                        </h3>
-                        <p className="mt-1 text-sm text-[#52715D]">
-                            Investment automatically divided between Deb, Puja and Lija
-                        </p>
+                        <h3 className="font-semibold text-[#174D35]">Daily Investment Dividing</h3>
+                        <p className="mt-1 text-sm text-[#52715D]">Profit = Total Income - Daily Kharcha - Stock Kharcha - Cash; Divide 3 = Profit / 3</p>
                     </div>
-
                     <Table
                         columns={[
-                            {
-                                key: 'date',
-                                label: 'Date',
-                                render: (row) => `${row.date.slice(8, 10)}-${row.date.slice(5, 7)}-${row.date.slice(0, 4)}`,
-                            },
-                            {
-                                key: 'deb',
-                                label: 'Deb',
-                                render: (row) => (
-                                    <span className="font-medium text-[#f23e3e]">
-                                        -₹{Math.abs(row.deb).toFixed(2)}
-                                    </span>
-                                ),
-                            },
-                            {
-                                key: 'puja',
-                                label: 'Puja',
-                                render: (row) => (
-                                    <span className="font-medium text-[#f23e3e]">
-                                        -₹{Math.abs(row.puja).toFixed(2)}
-                                    </span>
-                                ),
-                            },
-                            {
-                                key: 'lija',
-                                label: 'Lija',
-                                render: (row) => (
-                                    <span className="font-medium text-[#f23e3e]">
-                                        -₹{Math.abs(row.lija).toFixed(2)}
-                                    </span>
-                                ),
-                            },
-                            {
-                                key: 'invest',
-                                label: 'Invest Price',
-                                render: (row) => (
-                                    <span className="font-semibold text-red-600">
-                                        ₹{Number(row.invest || 0).toLocaleString('en-IN')}
-                                    </span>
-                                ),
-                            },
+                            { key: 'date', label: 'Date', render: (row) => String(row.date || '').length === 10 ? String(row.date).slice(8, 10) + '-' + String(row.date).slice(5, 7) + '-' + String(row.date).slice(0, 4) : '-' },
+                            { key: 'dailyKharcha', label: 'Daily Kharcha', render: (row) => <span className='font-semibold text-red-600'>{'\u20B9 ' + row.dailyKharcha.toFixed(2)}</span> },
+                            { key: 'stockKharcha', label: 'Stock Kharcha', render: (row) => <span className='font-semibold text-red-600'>{'\u20B9 ' + row.stockKharcha.toFixed(2)}</span> },
+                            { key: 'income', label: 'Total Income', render: (row) => '\u20B9 ' + row.income.toFixed(2) },
+                            { key: 'cash', label: 'Cash', render: (row) => '\u20B9 ' + row.cash.toFixed(2) },
+                            { key: 'profit', label: 'Profit', render: (row) => <span className={row.profit < 0 ? 'font-semibold text-red-600' : 'font-semibold text-[#176B45]'}>{'\u20B9 ' + row.profit.toFixed(2)}</span> },
+                            { key: 'divide3', label: 'Divide 3', render: (row) => '\u20B9 ' + row.divide3.toFixed(2) },
                         ]}
-                        data={filteredRecords.map((record) => {
-                            const totalPaise = Math.round(
-                                (record.invest ? Number(record.invest || 0) : Number(record.dailyUsage || 0)) * 100
-                            );
-                            const basePaise = Math.floor(totalPaise / 3);
-                            const remainder = totalPaise - basePaise * 3;
-
-                            return {
-                                date: record.date,
-                                invest: record.invest ? Number(record.invest || 0) : Number(record.dailyUsage || 0),
-                                deb: basePaise / 100,
-                                puja: (basePaise + (remainder >= 1 ? 1 : 0)) / 100,
-                                lija: (basePaise + (remainder >= 2 ? 1 : 0)) / 100,
-                            };
+                        data={dividingRecords.map((record) => {
+                            const dailyKharcha = Number(record.dailyKharcha || 0);
+                            const stockKharcha = Number(record.stockKharcha || 0);
+                            const income = Number(record.income || 0);
+                            const cash = Number(record.cash || 0);
+                            const profit = income - dailyKharcha - stockKharcha - cash;
+                            return { ...record, dailyKharcha, stockKharcha, income, cash, profit, divide3: profit / 3 };
                         })}
                         getRowKey={(row) => row.date}
-                        emptyMessage="No investment records for this month."
-                        renderActions={(row) => {
-                            const record = records.find(
-                                (item) => item.date === row.date
-                            );
-
-                            return (
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => record && openEditModal(record)}
-                                        className="rounded-lg border border-[#BBD7C1] px-3 py-2 font-medium text-[#176B45] hover:bg-[#F1F7F0]"
-                                    >
-                                        ✎ Edit
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setDeleteTarget(row)}
-                                        disabled={deletingDate === row.date}
-                                        className="rounded-lg border border-red-200 px-3 py-2 font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
-                                    >
-                                        {deletingDate === row.date
-                                            ? 'Deleting...'
-                                            : '🗑 Delete'}
-                                    </button>
-                                </div>
-                            );
-                        }}
+                        emptyMessage="No Daily Investment Dividing records yet."
+                        renderActions={(row) => (
+                            <div className="flex items-center gap-2">
+                                <button type="button" onClick={() => { setEditingDividingRecord(row.date); setDividingDate(row.date); setDividingDailyKharcha(String(row.dailyKharcha)); setDividingStockKharcha(String(row.stockKharcha)); setDividingIncome(String(row.income)); setDividingCash(String(row.cash)); }} className="rounded-lg border border-[#BBD7C1] px-3 py-2 font-medium text-[#176B45] hover:bg-[#F1F7F0]">Edit</button>
+                                <button type="button" onClick={async () => { if (!window.confirm(row.date + ' ra dividing record delete kariba ki?')) return; setIsDividingDeleting(true); try { const response = await axiosFetch(apiUrl + '/api/daily-investment-dividing/' + row.date, { method: 'DELETE', credentials: 'include' }); if (!response.ok) throw new Error('Delete failed'); setDividingRecords((previous) => previous.filter((item) => item.date !== row.date)); showSuccess('Dividing record delete hela.'); } catch { showError('Dividing record delete heiparila nahi.'); } finally { setIsDividingDeleting(false); } }} disabled={isDividingDeleting} className="rounded-lg border border-red-200 px-3 py-2 font-medium text-red-600 hover:bg-red-50 disabled:opacity-50">Delete</button>
+                            </div>
+                        )}
                     />
                 </div>
             </div>
@@ -736,3 +753,5 @@ export default function Dashboard() {
         </DashboardLayout>
     );
 }
+
+
