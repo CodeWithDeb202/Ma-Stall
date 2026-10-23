@@ -4,9 +4,10 @@ const DailyRecord = require('../models/DailyRecord');
 const DailyBuyingProduct = require('../models/DailyBuyingProduct');
 const StockProduct = require('../models/StockProduct');
 const requireAuth = require('../middleware/requireAuth');
+const requireAdmin = require('../middleware/requireAdmin');
 
 const router = express.Router();
-router.use(requireAuth);
+router.use(requireAuth, requireAdmin);
 
 // Recalculate Daily Usage for the day AFTER the purchase date.
 // Only the dailyUsage field is changed; manual amounts are preserved.
@@ -126,7 +127,7 @@ router.get('/', async (req, res) => {
     return res.json({ success: true, products });
   } catch (error) {
     console.error('Load purchase products:', error.message);
-    return res.status(500).json({ success: false, message: 'Products load heiparila nahi.' });
+    return res.status(500).json({ success: false, message: 'Unable to load products.' });
   }
 });
 
@@ -135,13 +136,13 @@ router.post('/', async (req, res) => {
     const { date, productName, category } = req.body || {};
 
     if (!validDate(date)) {
-      return res.status(400).json({ success: false, message: 'Valid date select kara.' });
+      return res.status(400).json({ success: false, message: 'Select a valid date.' });
     }
     if (typeof productName !== 'string' || !productName.trim() || productName.trim().length > 150) {
-      return res.status(400).json({ success: false, message: 'Product name enter kara.' });
+      return res.status(400).json({ success: false, message: 'Enter a product name.' });
     }
     if (!['Daily Usage', 'Stock Product', 'Permanent Stock'].includes(category)) {
-      return res.status(400).json({ success: false, message: 'Valid category select kara.' });
+      return res.status(400).json({ success: false, message: 'Select a valid category.' });
     }
 
     const cleanName = productName.trim().toLocaleLowerCase().replace(/^\p{L}/u, (letter) => letter.toLocaleUpperCase());
@@ -174,7 +175,7 @@ router.post('/', async (req, res) => {
     return res.status(201).json({ success: true, product });
   } catch (error) {
     console.error('Save purchase product:', error.message);
-    return res.status(500).json({ success: false, message: 'Product save heiparila nahi.' });
+    return res.status(500).json({ success: false, message: 'Unable to save the product.' });
   }
 });
 
@@ -237,7 +238,7 @@ router.put('/:id', async (req, res) => {
     return res.json({ success: true, product });
   } catch (error) {
     console.error('Update purchase product:', error.message);
-    return res.status(500).json({ success: false, message: 'Product update heiparila nahi.' });
+    return res.status(500).json({ success: false, message: 'Unable to update the product.' });
   }
 });
 
@@ -276,14 +277,14 @@ router.delete('/:id', async (req, res) => {
 
     return res.json({
       success: true,
-      message: 'Product delete hela.',
+      message: 'Product deleted successfully.',
       product,
     });
   } catch (error) {
     console.error('Delete purchase product:', error.message);
     return res.status(500).json({
       success: false,
-      message: 'Product delete heiparila nahi.',
+      message: 'Unable to delete the product.',
     });
   }
 });

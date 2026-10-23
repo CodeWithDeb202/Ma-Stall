@@ -81,7 +81,7 @@ export default function StockProducts() {
       const result = await request('/api/stock-products');
       setProducts(result.products || []);
     } catch (err) {
-      showError(err.message || 'Stock products load heiparila nahi.');
+      showError(err.message || 'Unable to load stock products.');
     } finally {
       setLoading(false);
     }
@@ -143,7 +143,7 @@ export default function StockProducts() {
         !Number.isFinite(Number(enteredPrice)) ||
         Number(enteredPrice) < 0)
     ) {
-      showWarning('Price re valid amount dia (e.g. 100 or 100.50).');
+      showWarning('Enter a valid price (e.g. 100 or 100.50).');
       return;
     }
 
@@ -156,7 +156,7 @@ export default function StockProducts() {
     const enteredName = normalizeName(form.productName);
 
     if (!enteredName) {
-      showWarning('Product name dia.');
+      showWarning('Enter a product name.');
       return;
     }
 
@@ -196,7 +196,7 @@ export default function StockProducts() {
       }));
       showSuccess('Stock product successfully saved.');
     } catch (err) {
-      showError(err.message || 'Product save heiparila nahi.');
+      showError(err.message || 'Unable to save the product.');
     } finally {
       setSaving(false);
     }
@@ -237,7 +237,7 @@ export default function StockProducts() {
       closeEdit();
       showSuccess('Stock product updated successfully.');
     } catch (err) {
-      showError(err.message || 'Product update heiparila nahi.');
+      showError(err.message || 'Unable to update the product.');
     } finally {
       setSaving(false);
     }
@@ -255,7 +255,7 @@ export default function StockProducts() {
       showSuccess(`"${deleteTarget.productName}" successfully deleted.`);
       setDeleteTarget(null);
     } catch (err) {
-      showError(err.message || 'Product delete heiparila nahi.');
+      showError(err.message || 'Unable to delete the product.');
     } finally {
       setDeleting(false);
     }

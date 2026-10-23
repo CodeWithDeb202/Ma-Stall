@@ -1,0 +1,97 @@
+/* Responsive toast notifications */
+.Toastify__toast-container {
+  box-sizing: border-box;
+  z-index: 99999;
+  width: min(24rem, calc(100vw - 2rem));
+  max-width: calc(100vw - 2rem);
+  padding: 0;
+}
+
+.Toastify__toast-container--top-right {
+  top: max(1rem, env(safe-area-inset-top));
+  right: max(1rem, env(safe-area-inset-right));
+}
+
+.Toastify__toast-container--top-left {
+  top: max(1rem, env(safe-area-inset-top));
+  left: max(1rem, env(safe-area-inset-left));
+}
+
+.Toastify__toast-container--top-center {
+  top: max(1rem, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.Toastify__toast {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 3.5rem;
+  height: auto;
+  margin-bottom: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.75rem;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  white-space: normal;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 16%);
+}
+
+.Toastify__toast-body {
+  min-width: 0;
+  margin: 0;
+  padding: 0.125rem 0;
+  align-items: flex-start;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.Toastify__toast-body > div:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  white-space: normal;
+  line-height: 1.45;
+}
+
+.Toastify__toast-icon {
+  flex: 0 0 auto;
+  width: 1.25rem;
+  margin-inline-end: 0.625rem;
+}
+
+.Toastify__close-button {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  padding: 0.125rem;
+  margin-inline-start: 0.5rem;
+}
+
+@media (max-width: 480px) {
+  .Toastify__toast-container {
+    width: calc(100vw - 1.5rem);
+    max-width: calc(100vw - 1.5rem);
+  }
+
+  .Toastify__toast-container--top-right,
+  .Toastify__toast-container--top-left {
+    top: max(0.75rem, env(safe-area-inset-top));
+    right: max(0.75rem, env(safe-area-inset-right));
+    left: auto;
+  }
+
+  .Toastify__toast {
+    padding: 0.75rem;
+    margin-bottom: 0.625rem;
+    border-radius: 0.625rem;
+    font-size: 0.875rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .Toastify__toast,
+  .Toastify__toast-container {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

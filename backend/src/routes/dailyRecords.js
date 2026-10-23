@@ -1,10 +1,11 @@
 const express = require('express');
 const DailyRecord = require('../models/DailyRecord');
 const requireAuth = require('../middleware/requireAuth');
+const requireAdmin = require('../middleware/requireAdmin');
 
 const router = express.Router();
 
-router.use(requireAuth);
+router.use(requireAuth, requireAdmin);
 
 router.get('/', async (req, res) => {
   try {

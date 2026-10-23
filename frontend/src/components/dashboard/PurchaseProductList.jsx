@@ -56,7 +56,7 @@ export default function PurchaseProductList() {
         return;
       }
       const result = await response.json();
-      if (!response.ok || !result.success) throw new Error(result.message || 'Products load heiparila nahi.');
+      if (!response.ok || !result.success) throw new Error(result.message || 'Unable to load products.');
 
       const rows = result.products || [];
       setProducts(rows);
@@ -67,7 +67,7 @@ export default function PurchaseProductList() {
         setEntryDate((previous) => previous || dates[0]);
       }
     } catch (err) {
-      showError(err.message || 'Backend connection check kara.');
+      showError(err.message || 'Check the backend connection.');
     } finally {
       setLoading(false);
     }
@@ -104,7 +104,7 @@ export default function PurchaseProductList() {
     setError('');
 
     if (!entryDate || !productName.trim()) {
-      showWarning('Date au product name enter kara.');
+      showWarning('Enter the date and product name.');
       return;
     }
 
@@ -134,7 +134,7 @@ export default function PurchaseProductList() {
         return;
       }
       const result = await response.json();
-      if (!response.ok || !result.success) throw new Error(result.message || 'Product save heiparila nahi.');
+      if (!response.ok || !result.success) throw new Error(result.message || 'Unable to save the product.');
 
       setProducts((previous) => [...previous, result.product]);
       setSelectedDate(entryDate);
@@ -142,7 +142,7 @@ export default function PurchaseProductList() {
       setProductName('');
       showSuccess('Product successfully saved.');
     } catch (err) {
-      showError(err.message || 'Product save heiparila nahi.');
+      showError(err.message || 'Unable to save the product.');
     } finally {
       setSaving(false);
     }
@@ -244,7 +244,7 @@ export default function PurchaseProductList() {
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.message || 'Product delete heiparila nahi.');
+        throw new Error(result.message || 'Unable to delete the product.');
       }
 
       setProducts((previous) =>
@@ -258,7 +258,7 @@ export default function PurchaseProductList() {
       showSuccess(`"${deleteTarget.productName}" successfully deleted.`);
       setDeleteTarget(null);
     } catch (err) {
-      showError(err.message || 'Product delete heiparila nahi.');
+      showError(err.message || 'Unable to delete the product.');
     } finally {
       setDeleteLoading(false);
     }

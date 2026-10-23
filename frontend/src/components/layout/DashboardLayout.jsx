@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Navbar from './Navbar';
+import LandingNavbar from './LandingNavbar';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
 import Spinner from '../reusable/Spinner';
@@ -12,40 +13,86 @@ export default function DashboardLayout({ children }) {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [role, setRole] = useState(null);
+  const [userId, setUserId] = useState(null);
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   useEffect(() => {
-    setTimeout(() => {
-      setIsNavigating(false);
-    }, 1000);
-  }, [pathname]);
+    let active = true;
+
+    async function verifyAdmin() {
+      try {
+        const response = await fetch('/api/auth/session', {
+          method: 'GET',
+          cache: 'no-store',
+          credentials: 'include',
+        });
+
+        const data = await response.json();
+
+        if (!active) return;
+
+        if (
+          response.ok &&
+          data.success === true &&
+          data.authenticated === true &&
+          ['admin', 'user'].includes(data.role)
+        ) {
+          setRole(data.role);
+          setUserId(data.role === 'user' ? data.userId : null);
+        } else {
+          router.replace('/auth/admin/login');
+        }
+      } catch {
+        if (active) router.replace('/auth/admin/login');
+      } finally {
+        if (active) setSessionChecked(true);
+      }
+    }
+
+    verifyAdmin();
+
+    return () => {
+      active = false;
+    };
+  }, [router]);
+
 
   const activeSection =
-    pathname === '/overview'
+    pathname === '/admin/overview'
       ? 'overview'
-      :
-    pathname === '/dashboard/purchase-product-list'
-      ? 'purchase-products'
-      : pathname === '/dashboard/stock-products'
-        ? 'stock-products'
-        : pathname === '/dashboard/daily-buying-product-list'
-          ? 'daily-buying'
-          : pathname === '/dashboard/total-revenue'
-            ? 'total-revenue'
-            : pathname === '/dashboard/selling-product'
-              ? 'selling-product'
-              : pathname === '/dashboard'
-              ? 'daily-invest'
-              : '';
+      : pathname === '/admin/dashboard/purchase-product-list'
+        ? 'purchase-products'
+        : pathname === '/admin/dashboard/stock-products'
+          ? 'stock-products'
+          : pathname === '/admin/dashboard/menu-items' ||
+            (role === 'user' &&
+            userId &&
+            pathname === `/u/${userId}/dashboard/menu-items`)
+            ? 'menu-items'
+          : pathname === '/admin/dashboard/daily-buying-product-list'
+            ? 'daily-buying'
+            : pathname === '/admin/dashboard/total-revenue'
+              ? 'total-revenue'
+              : pathname === '/admin/dashboard/selling-product'
+                ? 'selling-product'
+                : pathname === '/admin/dashboard'
+                  ? 'daily-invest'
+                  : '';
 
   function handleSectionChange(section) {
     const routes = {
-      'overview': '/overview',
-      'purchase-products': '/dashboard/purchase-product-list',
-      'stock-products': '/dashboard/stock-products',
-      'daily-invest': '/dashboard',
-      'daily-buying': '/dashboard/daily-buying-product-list',
-      'total-revenue': '/dashboard/total-revenue',
-      'selling-product': '/dashboard/selling-product',
+      overview: '/admin/overview',
+      'purchase-products': '/admin/dashboard/purchase-product-list',
+      'stock-products': '/admin/dashboard/stock-products',
+      'menu-items':
+        role === 'user'
+          ? `/u/${userId}/dashboard/menu-items`
+          : '/admin/dashboard/menu-items',
+      'daily-invest': '/admin/dashboard',
+      'daily-buying': '/admin/dashboard/daily-buying-product-list',
+      'total-revenue': '/admin/dashboard/total-revenue',
+      'selling-product': '/admin/dashboard/selling-product',
     };
 
     const target = routes[section];
@@ -58,21 +105,28 @@ export default function DashboardLayout({ children }) {
     setMobileMenuOpen(false);
   }
 
+  if (!sessionChecked || !role) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-[#F8FBF7]">
+        <Spinner label="Verifying access..." />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-[#F8FBF7] text-[#174D35]">
-      <Navbar />
+      {role === 'admin' ? <Navbar /> : <LandingNavbar showProfile />}
 
       <div className="flex min-h-0 min-w-0 flex-1">
-        {/* Desktop sidebar */}
         <aside className="hidden shrink-0 md:flex">
           <Sidebar
             activeSection={activeSection}
             onSectionChange={handleSectionChange}
+            role={role}
           />
         </aside>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          {/* Mobile menu toggle */}
           <div className="sticky top-0 z-40 flex shrink-0 items-center justify-between border-b border-[#D8E5D8] bg-white px-4 py-2 md:hidden">
             <span className="text-sm font-semibold text-[#174D35]">
               Menu
@@ -83,14 +137,17 @@ export default function DashboardLayout({ children }) {
               onClick={() => setMobileMenuOpen((open) => !open)}
               aria-expanded={mobileMenuOpen}
               aria-controls="mobile-dashboard-menu"
-              aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              aria-label={
+                mobileMenuOpen
+                  ? 'Close navigation menu'
+                  : 'Open navigation menu'
+              }
               className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#D8E5D8] bg-[#F8FBF7] text-xl text-[#176B45] transition hover:bg-[#E8F3E9] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#28784F]"
             >
               {mobileMenuOpen ? '✕' : '☰'}
             </button>
           </div>
 
-          {/* Collapsible mobile navigation */}
           {mobileMenuOpen && (
             <nav
               id="mobile-dashboard-menu"
@@ -99,6 +156,7 @@ export default function DashboardLayout({ children }) {
               <Sidebar
                 activeSection={activeSection}
                 onSectionChange={handleSectionChange}
+                role={role}
               />
             </nav>
           )}

@@ -1,12 +1,13 @@
 const express = require('express');
 const StockProduct = require('../models/StockProduct');
 const requireAuth = require('../middleware/requireAuth');
+const requireAdmin = require('../middleware/requireAdmin');
 
 const router = express.Router();
 
 const normalizeProductName = name => String(name ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
 
-router.use(requireAuth);
+router.use(requireAuth, requireAdmin);
 
 const validDate = date => {
   if (date === '' || date == null) return true;
@@ -21,7 +22,7 @@ router.get('/', async (req, res) => {
     res.json({ success: true, products });
   } catch (error) {
     console.error('Load stock products:', error.message);
-    res.status(500).json({ success: false, message: 'Stock products load heiparila nahi.' });
+    res.status(500).json({ success: false, message: 'Unable to load stock products.' });
   }
 });
 
@@ -36,7 +37,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Product name required.' });
     }
     if (!['Permanent Stock', 'Stock Products'].includes(category)) {
-      return res.status(400).json({ success: false, message: 'Category select kara.' });
+      return res.status(400).json({ success: false, message: 'Select a category.' });
     }
 
     const normalizedName = normalizeProductName(productName);
@@ -79,7 +80,7 @@ router.post('/', async (req, res) => {
     res.status(201).json({ success: true, product });
   } catch (error) {
     console.error('Save stock product:', error.message);
-    res.status(500).json({ success: false, message: 'Stock product save heiparila nahi.' });
+    res.status(500).json({ success: false, message: 'Unable to save the stock product.' });
   }
 });
 
@@ -111,7 +112,7 @@ router.put('/:id', async (req, res) => {
     res.json({ success: true, product });
   } catch (error) {
     console.error('Update stock product:', error.message);
-    res.status(500).json({ success: false, message: 'Stock product update heiparila nahi.' });
+    res.status(500).json({ success: false, message: 'Unable to update the stock product.' });
   }
 });
 
@@ -127,7 +128,7 @@ router.delete('/:id', async (req, res) => {
     res.json({ success: true, product });
   } catch (error) {
     console.error('Delete stock product:', error.message);
-    res.status(500).json({ success: false, message: 'Stock product delete heiparila nahi.' });
+    res.status(500).json({ success: false, message: 'Unable to delete the stock product.' });
   }
 });
 

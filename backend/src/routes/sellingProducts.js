@@ -3,8 +3,9 @@ const mongoose = require('mongoose');
 const SellingProduct = require('../models/SellingProduct');
 const SellingRecord = require('../models/SellingRecord');
 const requireAuth = require('../middleware/requireAuth');
+const requireAdmin = require('../middleware/requireAdmin');
 const router = express.Router();
-router.use(requireAuth);
+router.use(requireAuth, requireAdmin);
 function isValidDate(date) {
   if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return false;
@@ -17,7 +18,7 @@ router.get('/', async (req, res) => {
   try {
     const date = req.query.date;
     if (date !== undefined && !isValidDate(date)) {
-      return res.status(400).json({ success: false, message: 'Valid date select kara.' });
+      return res.status(400).json({ success: false, message: 'Select a valid date.' });
     }
     const [products, savedDates, records] = await Promise.all([
       SellingProduct.find({}).sort({ createdAt: 1 }).lean(),
@@ -47,7 +48,7 @@ router.post('/', async (req, res) => {
     }
     if (price === '' || price === null || price === undefined ||
         !Number.isFinite(numericPrice) || numericPrice < 0) {
-      return res.status(400).json({ success: false, message: 'Valid price enter kara.' });
+      return res.status(400).json({ success: false, message: 'Enter a valid price.' });
     }
     const duplicate = await SellingProduct.findOne({
       menuItem: { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' }
@@ -66,10 +67,10 @@ router.put('/quantity', async (req, res) => {
   try {
     const { date, sellingProductId, quantity } = req.body || {};
     if (!isValidDate(date)) {
-      return res.status(400).json({ success: false, message: 'Valid date select kara.' });
+      return res.status(400).json({ success: false, message: 'Select a valid date.' });
     }
     if (!mongoose.isValidObjectId(sellingProductId)) {
-      return res.status(400).json({ success: false, message: 'Valid menu item select kara.' });
+      return res.status(400).json({ success: false, message: 'Select a valid menu item.' });
     }
     if (!Number.isInteger(quantity) || quantity < 0) {
       return res.status(400).json({ success: false, message: 'Quantity 0 ba ta tharu adhika whole number heba darkar.' });
@@ -98,7 +99,7 @@ router.put('/:id', async (req, res) => {
     }
     if (price === '' || price === null || price === undefined ||
         !Number.isFinite(Number(price)) || Number(price) < 0) {
-      return res.status(400).json({ success: false, message: 'Valid price enter kara.' });
+      return res.status(400).json({ success: false, message: 'Enter a valid price.' });
     }
     const product = await SellingProduct.findByIdAndUpdate(
       req.params.id,

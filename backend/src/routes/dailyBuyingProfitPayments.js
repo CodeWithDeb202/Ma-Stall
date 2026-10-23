@@ -1,10 +1,11 @@
 const express = require('express');
 const DailyBuyingProfitPayment = require('../models/DailyBuyingProfitPayment');
 const requireAuth = require('../middleware/requireAuth');
+const requireAdmin = require('../middleware/requireAdmin');
 
 const router = express.Router();
 
-router.use(requireAuth);
+router.use(requireAuth, requireAdmin);
 
 // Read saved payment statuses
 router.get('/', async (req, res) => {

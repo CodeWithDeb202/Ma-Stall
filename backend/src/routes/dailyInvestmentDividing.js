@@ -1,8 +1,9 @@
 ﻿const express = require('express');
 const DailyInvestmentDividing = require('../models/DailyInvestmentDividing');
 const requireAuth = require('../middleware/requireAuth');
+const requireAdmin = require('../middleware/requireAdmin');
 const router = express.Router();
-router.use(requireAuth);
+router.use(requireAuth, requireAdmin);
 router.get('/', async (req, res) => { try { const records = await DailyInvestmentDividing.find().sort({ date: -1 }).lean(); return res.json({ success: true, records }); } catch (error) { return res.status(500).json({ success: false, message: 'Could not load dividing records' }); } });
 router.put('/:date', async (req, res) => { try { const { date } = req.params; if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ success: false, message: 'Invalid date' }); const updates = {}; for (const field of ['dailyKharcha', 'stockKharcha', 'income', 'cash']) { const value = req.body?.[field]; if (value === '' || value === null || value === undefined || !Number.isFinite(Number(value)) || Number(value) < 0) return res.status(400).json({ success: false, message: 'Invalid ' + field }); updates[field] = Number(value); } const record = await DailyInvestmentDividing.findOneAndUpdate({ date }, { $set: { date, ...updates } }, { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }); return res.json({ success: true, record }); } catch (error) { return res.status(500).json({ success: false, message: 'Could not save dividing record' }); } });
 router.delete('/:date', async (req, res) => { try { const { date } = req.params; if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ success: false, message: 'Invalid date' }); const record = await DailyInvestmentDividing.findOneAndDelete({ date }); if (!record) return res.status(404).json({ success: false, message: 'Record not found' }); return res.json({ success: true, message: 'Record deleted successfully', date: record.date }); } catch (error) { return res.status(500).json({ success: false, message: 'Could not delete dividing record' }); } });

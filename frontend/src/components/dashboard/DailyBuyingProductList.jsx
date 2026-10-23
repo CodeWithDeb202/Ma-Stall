@@ -95,7 +95,7 @@ export default function DailyBuyingProductList() {
 
         if (!productResult.success) {
           throw new Error(
-            productResult.message || 'Products load heiparila nahi.'
+            productResult.message || 'Unable to load products.'
           );
         }
 
@@ -107,7 +107,7 @@ export default function DailyBuyingProductList() {
 
         if (!stockResult.success) {
           throw new Error(
-            stockResult.message || 'Stock products load heiparila nahi.'
+            stockResult.message || 'Unable to load stock products.'
           );
         }
 
@@ -141,7 +141,7 @@ export default function DailyBuyingProductList() {
         }
       } catch (error) {
         if (!cancelled) {
-          setMessage(error.message || 'Backend connection check kara.');
+          setMessage(error.message || 'Check the backend connection.');
           setMessageType('error');
         }
       } finally {
@@ -303,7 +303,7 @@ export default function DailyBuyingProductList() {
     setMessage('');
 
     if (!entryDate || !productName.trim() || price === '') {
-      showWarning('Date, product name, price au quantity fill kara.');
+      showWarning('Enter the date, product name, price, and quantity.');
       return;
     }
 
@@ -329,7 +329,7 @@ export default function DailyBuyingProductList() {
         Number(quantityText.match(/^\d+(?:\.\d+)?/)[0]) <= 0
       )
     ) {
-      showWarning('Quantity re 250g, 2kg, 1 packet ba 5 pcs emiti lekha.');
+      showWarning('Enter a quantity with a unit, e.g. 250 g, 2 kg, 1 packet, or 5 pcs.');
       return;
     }
 
@@ -353,7 +353,7 @@ export default function DailyBuyingProductList() {
       const result = response.data;
 
       if (!result.success) {
-        throw new Error(result.message || 'Product save heiparila nahi.');
+        throw new Error(result.message || 'Unable to save the product.');
       }
 
       if (response.status === 401) {
@@ -362,7 +362,7 @@ export default function DailyBuyingProductList() {
       }
 
       if (!result.success) {
-        throw new Error(result.message || 'Product save heiparila nahi.');
+        throw new Error(result.message || 'Unable to save the product.');
       }
 
       const savedProduct = result.product;
@@ -375,7 +375,7 @@ export default function DailyBuyingProductList() {
       setQuantity('1');
       showSuccess('Product successfully saved.');
     } catch (error) {
-      showError(getErrorMessage(error, 'Product save heiparila nahi.'));
+      showError(getErrorMessage(error, 'Unable to save the product.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -438,7 +438,7 @@ export default function DailyBuyingProductList() {
       const result = response.data;
 
       if (!result.success) {
-        throw new Error(result.message || 'Product update heiparila nahi.');
+        throw new Error(result.message || 'Unable to update the product.');
       }
 
       if (response.status === 401) {
@@ -447,7 +447,7 @@ export default function DailyBuyingProductList() {
       }
 
       if (!result.success) {
-        throw new Error(result.message || 'Product update heiparila nahi.');
+        throw new Error(result.message || 'Unable to update the product.');
       }
 
       setProducts((previous) =>
@@ -458,7 +458,7 @@ export default function DailyBuyingProductList() {
       setEditingProduct(null);
       showSuccess('Product successfully updated.');
     } catch (error) {
-      setEditMessage(error.message || 'Product update heiparila nahi.');
+      setEditMessage(error.message || 'Unable to update the product.');
     } finally {
       setIsEditing(false);
     }
@@ -481,7 +481,7 @@ export default function DailyBuyingProductList() {
       const result = response.data;
 
       if (!result.success) {
-        throw new Error(result.message || 'Product delete heiparila nahi.');
+        throw new Error(result.message || 'Unable to delete the product.');
       }
 
       if (response.status === 401) {
@@ -490,7 +490,7 @@ export default function DailyBuyingProductList() {
       }
 
       if (!result.success) {
-        throw new Error(result.message || 'Product delete heiparila nahi.');
+        throw new Error(result.message || 'Unable to delete the product.');
       }
 
       setProducts((previous) =>
@@ -499,7 +499,7 @@ export default function DailyBuyingProductList() {
       showSuccess('Product successfully deleted.');
       setDeleteTarget(null);
     } catch (error) {
-      showError(getErrorMessage(error, 'Product delete heiparila nahi.'));
+      showError(getErrorMessage(error, 'Unable to delete the product.'));
       setDeleteTarget(null);
     } finally {
       setIsDeleting(false);

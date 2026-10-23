@@ -81,8 +81,8 @@ export default function SellingProduct() {
         setRecords(nextResult.records || []);
       }
     } catch (err) {
-      setError(err.message || 'Selling products load heiparila nahi.');
-      showError(err.message || 'Selling products load heiparila nahi.');
+      setError(err.message || 'Unable to load selling products.');
+      showError(err.message || 'Unable to load selling products.');
     } finally {
       setLoading(false);
     }
@@ -119,7 +119,7 @@ export default function SellingProduct() {
   async function addMenuItem(event) {
     event.preventDefault();
     if (!menuItem.trim() || price === '' || !Number.isFinite(Number(price)) || Number(price) < 0) {
-      showError('Menu Item o valid Price enter kara.');
+      showError('Enter a menu item and a valid price.');
       return;
     }
     setSavingProduct(true);
@@ -136,7 +136,7 @@ export default function SellingProduct() {
       showSuccess('Menu item successfully saved.');
       await loadData(selectedDate || today());
     } catch (err) {
-      showError(err.message || 'Menu item save heiparila nahi.');
+      showError(err.message || 'Unable to save the menu item.');
     } finally {
       setSavingProduct(false);
     }
@@ -174,7 +174,7 @@ export default function SellingProduct() {
   async function savePrice(product) {
     const id = String(product._id);
     if (editingPrice === '' || !Number.isFinite(Number(editingPrice)) || Number(editingPrice) < 0) {
-      showError('Valid Price enter kara.');
+      showError('Enter a valid price.');
       return;
     }
     setActionBusyId(id);
@@ -206,9 +206,9 @@ export default function SellingProduct() {
       await request(`/api/selling-products/${id}`, { method: 'DELETE' });
       setProducts((previous) => previous.filter((item) => String(item._id) !== id));
       setRecords((previous) => previous.filter((record) => String(record.sellingProductId) !== id));
-      showSuccess('Menu item delete hela.');
+      showSuccess('Menu item deleted successfully.');
     } catch (err) {
-      showError(err.message || 'Menu item delete heiparila nahi.');
+      showError(err.message || 'Unable to delete the menu item.');
     } finally {
       setActionBusyId('');
     }

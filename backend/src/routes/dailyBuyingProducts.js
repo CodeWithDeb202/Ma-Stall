@@ -1,10 +1,11 @@
 const express = require('express');
 const DailyBuyingProduct = require('../models/DailyBuyingProduct');
 const requireAuth = require('../middleware/requireAuth');
+const requireAdmin = require('../middleware/requireAdmin');
 
 const router = express.Router();
 
-router.use(requireAuth);
+router.use(requireAuth, requireAdmin);
 
 // Load all saved products
 router.get('/', async (req, res) => {
@@ -34,7 +35,7 @@ router.post('/', async (req, res) => {
     ) {
       return res.status(400).json({
         success: false,
-        message: 'Valid date select kara.',
+        message: 'Select a valid date.',
       });
     }
 
@@ -56,7 +57,7 @@ router.post('/', async (req, res) => {
     ) {
       return res.status(400).json({
         success: false,
-        message: 'Product name enter kara (maximum 150 characters).',
+        message: 'Enter a product name (maximum 150 characters).',
       });
     }
 
@@ -72,7 +73,7 @@ router.post('/', async (req, res) => {
     ) {
       return res.status(400).json({
         success: false,
-        message: 'Quantity re 250g, 2kg, 1 packet ba 5 pcs emiti lekha.',
+        message: 'Enter a quantity with a unit, e.g. 250 g, 2 kg, 1 packet, or 5 pcs.',
       });
     }
 
@@ -127,7 +128,7 @@ router.put('/:id', async (req, res) => {
         if (!Number.isFinite(numericPrice) || numericPrice < 0) {
           return res.status(400).json({
             success: false,
-            message: 'Valid price enter kara.',
+            message: 'Enter a valid price.',
           });
         }
 
@@ -147,7 +148,7 @@ router.put('/:id', async (req, res) => {
       ) {
         return res.status(400).json({
           success: false,
-          message: 'Quantity re 250g, 2kg, 1 packet ba 5 pcs emiti lekha.',
+          message: 'Enter a quantity with a unit, e.g. 250 g, 2 kg, 1 packet, or 5 pcs.',
         });
       }
 

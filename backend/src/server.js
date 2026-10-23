@@ -32,19 +32,47 @@ app.use(cors({
 app.use(express.json({ limit: '10kb' }));
 app.use(cookieParser());
 
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/auth', rateLimit({
+
+const authRateLimitOptions = {
   windowMs: 15 * 60 * 1000,
-  limit: 20,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
-}));
+  message: {
+    success: false,
+    message: 'Too many requests. Please try again later.',
+  },
+};
+
+// Strict limit for login, registration, and admin verification.
+const loginRateLimit = rateLimit({
+  ...authRateLimitOptions,
+  limit: 10,
+});
+
+// Session checks are frequent during dashboard navigation,
+// so give this endpoint its own higher limit.
+const sessionRateLimit = rateLimit({
+  ...authRateLimitOptions,
+  limit: 120,
+});
+
+// Apply strict limits only to sensitive authentication endpoints.
+app.use('/api/auth/login', loginRateLimit);
+app.use('/api/auth/register', loginRateLimit);
+app.use('/api/auth/verify', loginRateLimit);
+
+// Session checks have a separate limit.
+app.use('/api/auth/session', sessionRateLimit);
+
+app.use('/api/auth', require('./routes/auth'));
+
 
 app.use('/api/records', require('./routes/dailyRecords'));
 app.use('/api/daily-investment-dividing', require('./routes/dailyInvestmentDividing'));
 app.use('/api/daily-buying-products', require('./routes/dailyBuyingProducts'));
 app.use('/api/purchase-products', require('./routes/purchaseProducts'));
 app.use('/api/stock-products', require('./routes/stockProducts'));
+app.use('/api/menu-items', require('./routes/menuItems'));
 app.use('/api/daily-buying-payments', require('./routes/dailyBuyingProfitPayments'));
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'Ma Stall API is running' });

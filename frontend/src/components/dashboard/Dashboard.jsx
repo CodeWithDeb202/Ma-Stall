@@ -118,7 +118,7 @@ export default function Dashboard() {
                     }
                 }
             } catch {
-                showError('Records load heiparila nahi. Backend connection check kara.');
+                showError('Records load heiparila nahi. Check the backend connection.');
             }
         }
 
@@ -229,7 +229,7 @@ export default function Dashboard() {
             }
             const result = await response.json();
             if (!response.ok || !result.success) {
-                showError(result.message || 'Record update heiparila nahi.');
+                showError(result.message || 'Unable to update the record.');
                 return;
             }
             setRecords((previous) =>
@@ -238,9 +238,9 @@ export default function Dashboard() {
                 ).sort((a, b) => b.date.localeCompare(a.date))
             );
             closeEditModal();
-            showSuccess('Record update hela.');
+            showSuccess('Record updated successfully.');
         } catch {
-            showError('Backend re connect heiparuni. Internet/server connection check kara.');
+            showError('Unable to connect to the backend. Check your internet or server connection.');
         } finally {
             setIsEditSaving(false);
         }
@@ -268,7 +268,7 @@ export default function Dashboard() {
             const result = await response.json();
 
             if (!response.ok || !result.success) {
-                showError(result.message || 'Record delete heiparila nahi.');
+                showError(result.message || 'Unable to delete the record.');
                 return;
             }
 
@@ -282,7 +282,7 @@ export default function Dashboard() {
 
             showSuccess(`${recordDate} record delete hela.`);
         } catch {
-            showError('Backend re connect heiparuni. Internet/server connection check kara.');
+            showError('Unable to connect to the backend. Check your internet or server connection.');
         } finally {
             setDeletingDate('');
         }
@@ -304,7 +304,7 @@ export default function Dashboard() {
         event.preventDefault();
 
         if (!date || isSaving) {
-            showWarning('Date select kara.');
+            showWarning('Select a date.');
             return;
         }
 
@@ -339,7 +339,7 @@ export default function Dashboard() {
             }
 
             if (!response.ok || !result.success) {
-                showError(result.message || 'Record save heiparila nahi.');
+                showError(result.message || 'Unable to save the record.');
                 return;
             }
 
@@ -352,7 +352,7 @@ export default function Dashboard() {
                 );
             });
 
-            showSuccess('Record successfully save hela.');
+            showSuccess('Record saved successfully.');
             setDate(getTodayDate());
             setInvest('');
             setStockKharcha('');
@@ -360,7 +360,7 @@ export default function Dashboard() {
             setCash('');
             setPurseCash('');
         } catch {
-            showError('Backend re connect heiparuni. Internet/server connection check kara.');
+            showError('Unable to connect to the backend. Check your internet or server connection.');
         } finally {
             setIsSaving(false);
         }
@@ -368,7 +368,7 @@ export default function Dashboard() {
 
     async function saveDividingRecord(event) {
         event.preventDefault();
-        if (!dividingDate || isDividingSaving) { showWarning('Date select kara.'); return; }
+        if (!dividingDate || isDividingSaving) { showWarning('Select a date.'); return; }
         const values = { dailyKharcha: Number(dividingDailyKharcha || 0), stockKharcha: Number(dividingStockKharcha || 0), income: Number(dividingIncome || 0), cash: Number(dividingCash || 0) };
         if ([dividingDailyKharcha, dividingStockKharcha, dividingIncome, dividingCash].some((value) => value !== '' && (!Number.isFinite(Number(value)) || Number(value) < 0))) { showWarning('Amounts valid positive number heba darkar.'); return; }
         setIsDividingSaving(true);
@@ -376,11 +376,11 @@ export default function Dashboard() {
             const response = await axiosFetch(apiUrl + '/api/daily-investment-dividing/' + dividingDate, { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values) });
             const result = await response.json();
             if (response.status === 401) { window.location.replace('/'); return; }
-            if (!response.ok) { showError(result.message || 'Dividing record save heiparila nahi.'); return; }
+            if (!response.ok) { showError(result.message || 'Unable to save the dividing record.'); return; }
             setDividingRecords((previous) => [result, ...previous.filter((record) => record.date !== result.date)].sort((a, b) => b.date.localeCompare(a.date)));
-            showSuccess('Daily Investment Dividing record save hela.');
+            showSuccess('Daily investment dividing record saved successfully.');
             setDividingDate(getTodayDate()); setDividingDailyKharcha(''); setDividingStockKharcha(''); setDividingIncome(''); setDividingCash('');
-        } catch { showError('Dividing record save heiparila nahi.'); } finally { setIsDividingSaving(false); }
+        } catch { showError('Unable to save the dividing record.'); } finally { setIsDividingSaving(false); }
     }
 
     return (
@@ -726,7 +726,7 @@ export default function Dashboard() {
                         renderActions={(row) => (
                             <div className="flex items-center gap-2">
                                 <button type="button" onClick={() => { setEditingDividingRecord(row.date); setDividingDate(row.date); setDividingDailyKharcha(String(row.dailyKharcha)); setDividingStockKharcha(String(row.stockKharcha)); setDividingIncome(String(row.income)); setDividingCash(String(row.cash)); }} className="rounded-lg border border-[#BBD7C1] px-3 py-2 font-medium text-[#176B45] hover:bg-[#F1F7F0]">Edit</button>
-                                <button type="button" onClick={async () => { if (!window.confirm(row.date + ' ra dividing record delete kariba ki?')) return; setIsDividingDeleting(true); try { const response = await axiosFetch(apiUrl + '/api/daily-investment-dividing/' + row.date, { method: 'DELETE', credentials: 'include' }); if (!response.ok) throw new Error('Delete failed'); setDividingRecords((previous) => previous.filter((item) => item.date !== row.date)); showSuccess('Dividing record delete hela.'); } catch { showError('Dividing record delete heiparila nahi.'); } finally { setIsDividingDeleting(false); } }} disabled={isDividingDeleting} className="rounded-lg border border-red-200 px-3 py-2 font-medium text-red-600 hover:bg-red-50 disabled:opacity-50">Delete</button>
+                                <button type="button" onClick={async () => { if (!window.confirm(row.date + ' ra dividing record delete kariba ki?')) return; setIsDividingDeleting(true); try { const response = await axiosFetch(apiUrl + '/api/daily-investment-dividing/' + row.date, { method: 'DELETE', credentials: 'include' }); if (!response.ok) throw new Error('Delete failed'); setDividingRecords((previous) => previous.filter((item) => item.date !== row.date)); showSuccess('Dividing record deleted successfully.'); } catch { showError('Unable to delete the dividing record.'); } finally { setIsDividingDeleting(false); } }} disabled={isDividingDeleting} className="rounded-lg border border-red-200 px-3 py-2 font-medium text-red-600 hover:bg-red-50 disabled:opacity-50">Delete</button>
                             </div>
                         )}
                     />

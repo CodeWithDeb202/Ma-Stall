@@ -298,7 +298,7 @@ export default function TotalRevenue() {
       setRecords(recordsResult.records || []);
       setProducts(productsResult.products || []);
     } catch (e) {
-      setError(e.message || 'Backend connection check kara.');
+      setError(e.message || 'Check the backend connection.');
     } finally {
       setLoading(false);
     }

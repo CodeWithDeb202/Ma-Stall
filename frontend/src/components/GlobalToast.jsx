@@ -2,6 +2,7 @@
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import "./GlobalToast.css";
 
 export default function GlobalToast() {
   return (
@@ -14,6 +15,10 @@ export default function GlobalToast() {
       draggable
       theme="colored"
       limit={4}
+      role="status"
+      toastClassName="app-toast"
+      bodyClassName="app-toast-body"
+      closeButton
     />
   );
 }

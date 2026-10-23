@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Ma Stall | Private Ledger",
-  description: "Private financial records for Ma Stall — daily investment, income, cash and profit or loss.",
+  title: "Omm Sai Krishna | Healthy Breakfast",
+  description: "Omm Sai Krishna — Healthy Breakfast, fresh food and healthy drinks.",
 };
 
 export default function RootLayout({ children }) {

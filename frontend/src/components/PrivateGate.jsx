@@ -39,7 +39,7 @@ export default function PrivateGate() {
   }, []);
 
   function goToDashboard() {
-    router.replace("/dashboard");
+    router.replace("/admin/dashboard");
   }
 
   async function handleSubmit(event) {
@@ -64,7 +64,7 @@ export default function PrivateGate() {
 
 
       if (response.status === 200 && response.data?.success) {
-        router.replace("/dashboard");
+        router.replace("/admin/dashboard");
       } else {
         setError(response.data?.message || "Verification failed.");
       }

@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import apiUrl from "@/services/api";
 
-export default async function verifySession() {
+export default async function verifySession(allowedRoles = ['admin']) {
   const requestId = crypto.randomUUID();
 
 
@@ -29,7 +29,7 @@ export default async function verifySession() {
     );
 
 
-    if (response.status !== 200) {
+    if (response.status !== 200 || !allowedRoles.includes(response.data?.role)) {
 
       redirect("/");
     }
