@@ -8,8 +8,6 @@ export default function MenuItemCard({
   image = '/default-menu-item.png',
   images = [],
   name,
-  description,
-  price,
   rating = 4,
   href,
 }) {
@@ -56,7 +54,7 @@ export default function MenuItemCard({
       role={href ? 'link' : undefined}
       tabIndex={href ? 0 : undefined}
       aria-label={href ? `View details for ${name}` : undefined}
-      className={`group relative isolate h-80 overflow-hidden rounded-2xl bg-gray-200 shadow-md transition-[box-shadow] duration-500 ease-in-out hover:shadow-xl ${href ? 'cursor-pointer' : ''}`}
+      className={`group relative isolate h-80 overflow-hidden rounded-2xl bg-gray-200 shadow-md transition-shadow duration-500 ease-in-out hover:shadow-xl ${href ? 'cursor-pointer' : ''}`}
     >
       {slides.map((src, index) => (
         <Image
