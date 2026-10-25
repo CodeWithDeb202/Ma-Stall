@@ -1,44 +1,36 @@
-'use client';
-
-import { useEffect, useState } from 'react';
 import LandingNavbar from '@/components/layout/LandingNavbar';
 import MenuItemCard from '@/components/reusable/MenuItemCard';
-import apiUrl from '@/services/api';
 
-export default function Home() {
-  const [menuItems, setMenuItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+export const revalidate = 60;
 
-  useEffect(() => {
-    const controller = new AbortController();
+async function getMenuItems() {
+  const backendUrl =
+    process.env.BACKEND_URL || 'https://ma-stall.onrender.com';
 
-    async function loadMenuItems() {
-      try {
-        const response = await fetch(`${apiUrl}/api/menu-items/public`, {
-          cache: 'no-store',
-          signal: controller.signal,
-        });
-
-        const result = await response.json();
-
-        if (!response.ok || !result.success) {
-          throw new Error(result.message || 'Unable to load menu items.');
-        }
-
-        setMenuItems(Array.isArray(result.items) ? result.items : []);
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          setError(err.message || 'Unable to load menu items.');
-        }
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
+  try {
+    const response = await fetch(
+      `${backendUrl}/api/menu-items/public`,
+      {
+        next: { revalidate: 60 },
+        signal: AbortSignal.timeout(8000),
       }
-    }
+    );
 
-    loadMenuItems();
-    return () => controller.abort();
-  }, []);
+    if (!response.ok) return [];
+
+    const result = await response.json();
+
+    return result.success && Array.isArray(result.items)
+      ? result.items
+      : [];
+  } catch (error) {
+    console.error('Unable to load public menu items:', error.message);
+    return [];
+  }
+}
+
+export default async function Home() {
+  const menuItems = await getMenuItems();
 
   return (
     <>
@@ -55,24 +47,22 @@ export default function Home() {
             </p>
           </div>
 
-          {loading ? (
-            <p className="py-8 text-gray-600">Loading menu items...</p>
-          ) : error ? (
-            <p role="alert" className="py-8 text-red-600">{error}</p>
-          ) : menuItems.length === 0 ? (
-            <p className="py-8 text-gray-600">No menu items available yet.</p>
+          {menuItems.length === 0 ? (
+            <p className="py-8 text-gray-600">
+              No menu items available right now. Please refresh shortly.
+            </p>
           ) : (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {menuItems.map((item) => (
+              {menuItems.map((item, index) => (
                 <MenuItemCard
                   key={item._id}
                   images={item.images?.map((img) => img.url).filter(Boolean) || []}
-                  image={item.images?.[0]?.url || '/default-menu-item.png'}
+                  image={item.images?.[0]?.url || '/default-menu-item.webp'}
                   name={item.name}
                   description={item.description}
                   price={item.price}
                   rating={item.rating ?? 0}
-                  priority={menuItems[0]?._id === item._id}
+                  priority={index === 0}
                   href={item._id ? `/menu-items/${item._id}` : undefined}
                 />
               ))}
