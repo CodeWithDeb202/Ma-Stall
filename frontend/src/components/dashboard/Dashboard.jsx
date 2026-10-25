@@ -377,7 +377,16 @@ export default function Dashboard() {
             const result = await response.json();
             if (response.status === 401) { window.location.replace('/'); return; }
             if (!response.ok) { showError(result.message || 'Unable to save the dividing record.'); return; }
-            setDividingRecords((previous) => [result, ...previous.filter((record) => record.date !== result.date)].sort((a, b) => b.date.localeCompare(a.date)));
+            const savedRecord = result.record;
+            if (!savedRecord || typeof savedRecord.date !== 'string') {
+                showError('The server returned an invalid dividing record. Please refresh and try again.');
+                return;
+            }
+            setDividingRecords((previous) =>
+                [savedRecord, ...previous.filter((record) => record.date !== savedRecord.date)]
+                    .filter((record) => record && typeof record.date === 'string')
+                    .sort((a, b) => b.date.localeCompare(a.date))
+            );
             showSuccess('Daily investment dividing record saved successfully.');
             setDividingDate(getTodayDate()); setDividingDailyKharcha(''); setDividingStockKharcha(''); setDividingIncome(''); setDividingCash('');
         } catch { showError('Unable to save the dividing record.'); } finally { setIsDividingSaving(false); }
@@ -726,12 +735,67 @@ export default function Dashboard() {
                         renderActions={(row) => (
                             <div className="flex items-center gap-2">
                                 <button type="button" onClick={() => { setEditingDividingRecord(row.date); setDividingDate(row.date); setDividingDailyKharcha(String(row.dailyKharcha)); setDividingStockKharcha(String(row.stockKharcha)); setDividingIncome(String(row.income)); setDividingCash(String(row.cash)); }} className="rounded-lg border border-[#BBD7C1] px-3 py-2 font-medium text-[#176B45] hover:bg-[#F1F7F0]">Edit</button>
-                                <button type="button" onClick={async () => { if (!window.confirm(row.date + ' ra dividing record delete kariba ki?')) return; setIsDividingDeleting(true); try { const response = await axiosFetch(apiUrl + '/api/daily-investment-dividing/' + row.date, { method: 'DELETE', credentials: 'include' }); if (!response.ok) throw new Error('Delete failed'); setDividingRecords((previous) => previous.filter((item) => item.date !== row.date)); showSuccess('Dividing record deleted successfully.'); } catch { showError('Unable to delete the dividing record.'); } finally { setIsDividingDeleting(false); } }} disabled={isDividingDeleting} className="rounded-lg border border-red-200 px-3 py-2 font-medium text-red-600 hover:bg-red-50 disabled:opacity-50">Delete</button>
+                                <button
+                                    type="button"
+                                    onClick={() => setDividingDeleteTarget(row)}
+                                    disabled={isDividingDeleting}
+                                    className="rounded-lg border border-red-200 px-3 py-2 font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                                >
+                                    Delete
+                                </button>
                             </div>
                         )}
                     />
                 </div>
             </div>
+
+            <Warning
+                open={Boolean(dividingDeleteTarget)}
+                title="Delete Dividing Record?"
+                message={
+                    dividingDeleteTarget
+                        ? `Are you sure you want to permanently delete the dividing record for ${dividingDeleteTarget.date}? This action cannot be undone.`
+                        : ''
+                }
+                confirmText="Confirm Delete"
+                cancelText="Cancel"
+                loading={isDividingDeleting}
+                onConfirm={async () => {
+                    if (!dividingDeleteTarget || isDividingDeleting) return;
+
+                    const dateToDelete = dividingDeleteTarget.date;
+                    setIsDividingDeleting(true);
+
+                    try {
+                        const response = await axiosFetch(
+                            apiUrl + '/api/daily-investment-dividing/' + dateToDelete,
+                            { method: 'DELETE', credentials: 'include' }
+                        );
+                        const result = await response.json().catch(() => ({}));
+
+                        if (response.status === 401) {
+                            window.location.replace('/');
+                            return;
+                        }
+                        if (!response.ok) {
+                            throw new Error(result.message || 'Unable to delete the dividing record.');
+                        }
+
+                        setDividingRecords((previous) =>
+                            previous.filter((item) => item.date !== dateToDelete)
+                        );
+                        setDividingDeleteTarget(null);
+                        showSuccess('Dividing record deleted successfully.');
+                    } catch (error) {
+                        showError(error.message || 'Unable to delete the dividing record.');
+                    } finally {
+                        setIsDividingDeleting(false);
+                    }
+                }}
+                onCancel={() => {
+                    if (!isDividingDeleting) setDividingDeleteTarget(null);
+                }}
+            />
 
             <Warning
                 open={Boolean(deleteTarget)}
