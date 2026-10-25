@@ -10,6 +10,7 @@ export default function MenuItemCard({
   name,
   rating = 4,
   href,
+  priority = false,
 }) {
   const router = useRouter();
   const safeRating = Math.max(1, Math.min(5, Number(rating) || 1));
@@ -62,13 +63,13 @@ export default function MenuItemCard({
           src={src}
           alt={`${name} - image ${index + 1}`}
           fill
-          unoptimized
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           className={`object-cover transition-[opacity,transform] duration-700 ease-in-out group-hover:scale-105 ${
             index === activeIndex ? 'opacity-100' : 'opacity-0'
           }`}
           style={{ zIndex: index === activeIndex ? 0 : -1 }}
-          priority={index === 0}
+          priority={priority && index === 0}
+          loading={priority && index === 0 ? 'eager' : 'lazy'}
         />
       ))}
 

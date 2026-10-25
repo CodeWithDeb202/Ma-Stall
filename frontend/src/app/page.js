@@ -72,6 +72,7 @@ export default function Home() {
                   description={item.description}
                   price={item.price}
                   rating={item.rating ?? 0}
+                  priority={menuItems[0]?._id === item._id}
                   href={item._id ? `/menu-items/${item._id}` : undefined}
                 />
               ))}
