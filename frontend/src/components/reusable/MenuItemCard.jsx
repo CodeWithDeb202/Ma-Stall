@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export default function MenuItemCard({
@@ -43,18 +44,6 @@ export default function MenuItemCard({
     <article
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={() => {
-        if (href) router.push(href);
-      }}
-      onKeyDown={(event) => {
-        if (href && (event.key === 'Enter' || event.key === ' ')) {
-          event.preventDefault();
-          router.push(href);
-        }
-      }}
-      role={href ? 'link' : undefined}
-      tabIndex={href ? 0 : undefined}
-      aria-label={href ? `Menu item: ${name}` : undefined}
       className={`group relative isolate h-80 overflow-hidden rounded-2xl bg-gray-200 shadow-md transition-shadow duration-500 ease-in-out hover:shadow-xl ${href ? 'cursor-pointer' : ''}`}
     >
       <Image
@@ -70,9 +59,17 @@ export default function MenuItemCard({
         loading={priority ? 'eager' : 'lazy'}
       />
 
+      {href && (
+        <Link
+          href={href}
+          aria-label={`View menu item: ${name}`}
+          className="absolute inset-0 z-10"
+        />
+      )}
+
       <div className="absolute inset-0 z-0 bg-linear-to-t from-black/90 via-black/30 to-transparent pointer-events-none" />
 
-      <div className="absolute inset-x-0 bottom-0 z-10 p-3 pb-7 sm:p-5 sm:pb-8 text-white">
+      <div className="absolute inset-x-0 bottom-0 z-20 pointer-events-none p-3 pb-7 sm:p-5 sm:pb-8 text-white">
         <div className="flex items-end justify-between gap-2">
           <h2 className="min-w-0 truncate text-sm font-extrabold capitalize drop-shadow-[0_2px_3px_rgba(0,0,0,1)] sm:text-xl">
             {name}
@@ -90,7 +87,7 @@ export default function MenuItemCard({
 
       {slides.length > 1 && (
         <div
-          className="absolute inset-x-0 bottom-2 z-20 flex items-center justify-center gap-1.5"
+          className="absolute inset-x-0 bottom-2 z-30 flex items-center justify-center gap-1.5"
           aria-label={`Image ${activeIndex + 1} of ${slides.length}`}
         >
           {slides.map((src, index) => (
