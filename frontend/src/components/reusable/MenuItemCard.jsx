@@ -77,9 +77,9 @@ export default function MenuItemCard({
 
       <div className="absolute inset-x-0 bottom-0 z-10 p-3 sm:p-5 text-white">
         <div className="flex items-end justify-between gap-2">
-          <h3 className="min-w-0 truncate text-sm font-extrabold capitalize drop-shadow-[0_2px_3px_rgba(0,0,0,1)] sm:text-xl">
+          <h2 className="min-w-0 truncate text-sm font-extrabold capitalize drop-shadow-[0_2px_3px_rgba(0,0,0,1)] sm:text-xl">
             {name}
-          </h3>
+          </h2>
 
           <div
             className="flex shrink-0 items-center gap-1 rounded-full bg-black/50 px-2 py-1 text-xs sm:text-sm"

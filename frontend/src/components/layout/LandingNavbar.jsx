@@ -14,13 +14,13 @@ export default function LandingNavbar({ showProfile = false }) {
 
     async function checkSession() {
       try {
-        const response = await fetch('/api/auth/session', {
+        const response = await fetch('/api/auth/session-status', {
           method: 'GET',
           cache: 'no-store',
           credentials: 'include',
         });
 
-        const data = await response.json();
+        const data = await response.json().catch(() => ({}));
 
         if (active) {
           const validSession =
