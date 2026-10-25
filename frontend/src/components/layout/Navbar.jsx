@@ -9,7 +9,7 @@ export default function Navbar() {
         <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 border-[#176B45] bg-white shadow-sm sm:h-11 sm:w-11">
           <Image
             src="/om-sai-krishna-logo.webp"
-            alt="Omm Sai Krishna logo"
+            alt="Omm Sai Shri Krishna logo"
             width={44}
             height={44}
             priority
@@ -18,7 +18,7 @@ export default function Navbar() {
         </div>
         <div className="min-w-0">
           <h1 className="truncate text-base font-bold tracking-tight text-[#174D35] sm:text-xl">
-            Omm Sai Krishna
+            Omm Sai Shri Krishna
           </h1>
           <p className="hidden text-xs text-[#52715D] sm:block">
             Daily investment and income management

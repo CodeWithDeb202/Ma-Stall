@@ -58,12 +58,12 @@ export default function LandingNavbar({ showProfile = false }) {
         <Link
           href="/"
           className="flex min-w-0 shrink items-center gap-2 sm:gap-3"
-          aria-label="Omm Sai Krishna home"
+          aria-label="Omm Sai Shri Krishna home"
         >
           <span className="h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 border-[#176B45] bg-white shadow-sm sm:h-11 sm:w-11">
             <Image
               src="/om-sai-krishna-logo.webp"
-              alt="Omm Sai Krishna logo"
+              alt="Omm Sai Shri Krishna logo"
               width={44}
               height={44}
               priority
@@ -72,7 +72,7 @@ export default function LandingNavbar({ showProfile = false }) {
           </span>
           <span className="min-w-0">
             <span className="block truncate text-base font-bold tracking-tight text-[#174D35] sm:text-xl">
-              Omm Sai Krishna
+              Omm Sai Shri Krishna
             </span>
             <span className="hidden text-xs text-[#52715D] sm:block">
               Daily investment and income management

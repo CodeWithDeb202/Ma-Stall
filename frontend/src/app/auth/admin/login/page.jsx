@@ -47,7 +47,7 @@ export default function AdminLoginPage() {
 
         <div className="mt-8">
           <p className="text-sm font-semibold uppercase tracking-widest text-[#176B45]">
-            Omm Sai Krishna
+            Omm Sai Shri Krishna
           </p>
           <h1 className="mt-2 text-3xl font-bold text-[#174D35]">
             Admin Login

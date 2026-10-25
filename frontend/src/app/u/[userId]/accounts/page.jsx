@@ -228,7 +228,7 @@ export default function UserAccountPage() {
               ← Back to home
             </Link>
             <p className="mt-5 text-sm font-semibold tracking-wide text-[#28784F]">
-              OMM SAI KRISHNA
+              OMM SAI SHRI KRISHNA
             </p>
             <h1 className="mt-1 text-3xl font-bold tracking-tight text-[#174D35]">
               My Account

@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Omm Sai Krishna | Healthy Breakfast",
-  description: "Omm Sai Krishna — Healthy Breakfast, fresh food and healthy drinks.",
+  title: "Omm Sai Shri Krishna | Healthy Breakfast",
+  description: "Omm Sai Shri Krishna — Healthy Breakfast, fresh food and healthy drinks.",
 };
 
 export default function RootLayout({ children }) {

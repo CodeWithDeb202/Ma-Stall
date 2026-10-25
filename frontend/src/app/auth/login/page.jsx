@@ -80,7 +80,7 @@ export default function LoginPage() {
         </Link>
 
         <div className="mt-6">
-          <p className="text-sm font-semibold text-[#28784F]">OMM SAI KRISHNA</p>
+          <p className="text-sm font-semibold text-[#28784F]">OMM SAI SHRI KRISHNA</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#174D35]">
             Welcome back
           </h1>
