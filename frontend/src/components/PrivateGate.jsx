@@ -22,7 +22,7 @@ export default function PrivateGate() {
   useEffect(() => {
     let active = true;
 
-    axios.get("/api/auth/session", { withCredentials: true })
+    axios.get("/api/auth/session-status", { withCredentials: true })
       .then((response) => {
         if (active && response.data?.authenticated) {
           setAlreadyLoggedIn(true);

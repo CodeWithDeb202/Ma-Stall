@@ -10,6 +10,12 @@ import { showError, showSuccess } from '@/lib/toast';
 import Warning from '../reusable/Warning';
 import Form from '../reusable/Form';
 
+const NOTIFICATION_DRAFT_KEY = 'ma-stall-admin-notification-draft';
+
+function notificationDraftKey(sessionId, recipientId) {
+  return `${NOTIFICATION_DRAFT_KEY}:${sessionId}:${recipientId}`;
+}
+
 function formatRegistrationDate(value) {
   if (!value) return '—';
   const date = new Date(value);
@@ -29,6 +35,100 @@ export default function Users() {
   const [notificationTarget, setNotificationTarget] = useState(null);
   const [notificationTitle, setNotificationTitle] = useState('');
   const [notificationMessage, setNotificationMessage] = useState('');
+  const [notificationSending, setNotificationSending] = useState(false);
+  const [notificationDraftRecipientId, setNotificationDraftRecipientId] = useState('');
+  const [adminSessionId, setAdminSessionId] = useState('');
+  const [notificationDraftReady, setNotificationDraftReady] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const response = await fetch('/api/auth/session', {
+          cache: 'no-store',
+          credentials: 'include',
+        });
+        const session = await response.json().catch(() => ({}));
+        if (
+          !response.ok ||
+          session.success !== true ||
+          session.role !== 'admin' ||
+          typeof session.sessionId !== 'string'
+        ) {
+          throw new Error('Could not verify the current admin session.');
+        }
+        if (!active) return;
+
+        setAdminSessionId(session.sessionId);
+        const prefix = `${NOTIFICATION_DRAFT_KEY}:${session.sessionId}:`;
+        const matchingKey = Array.from({ length: sessionStorage.length }, (_, index) =>
+          sessionStorage.key(index)
+        ).find((key) => key?.startsWith(prefix));
+        const savedDraft = matchingKey ? sessionStorage.getItem(matchingKey) : null;
+
+        if (savedDraft) {
+          const draft = JSON.parse(savedDraft);
+          const recipientId =
+            typeof draft.recipientId === 'string' &&
+            /^[a-f\d]{24}$/i.test(draft.recipientId) &&
+            matchingKey === notificationDraftKey(session.sessionId, draft.recipientId)
+              ? draft.recipientId
+              : '';
+          const title = typeof draft.title === 'string' ? draft.title : '';
+          const message = typeof draft.message === 'string' ? draft.message : '';
+
+          if (recipientId && draft.isOpen === true) {
+            setNotificationDraftRecipientId(recipientId);
+            setNotificationTitle(title);
+            setNotificationMessage(message);
+            setNotificationTarget({
+              _id: recipientId,
+              name: 'Checking recipient...',
+              username: 'Checking recipient...',
+            });
+          } else if (matchingKey) {
+            sessionStorage.removeItem(matchingKey);
+          }
+        }
+      } catch (error) {
+        if (active) {
+          showError(error.message || 'Could not restore the notification draft.');
+        }
+      } finally {
+        if (active) setNotificationDraftReady(true);
+      }
+    }, 0);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!notificationDraftReady || !adminSessionId || !notificationDraftRecipientId) return;
+
+    try {
+      sessionStorage.setItem(
+        notificationDraftKey(adminSessionId, notificationDraftRecipientId),
+        JSON.stringify({
+          isOpen: Boolean(notificationTarget),
+          recipientId: notificationDraftRecipientId,
+          title: notificationTitle,
+          message: notificationMessage,
+        })
+      );
+    } catch {
+      showError('Could not save the notification draft in this browser session.');
+    }
+  }, [
+    adminSessionId,
+    notificationDraftReady,
+    notificationDraftRecipientId,
+    notificationMessage,
+    notificationTarget,
+    notificationTitle,
+  ]);
 
   useEffect(() => {
     let active = true;
@@ -77,6 +177,8 @@ export default function Users() {
         return;
       }
 
+
+
       const result = await response.json().catch(() => ({}));
       if (!response.ok || !result.success) {
         throw new Error(result.message || 'Could not delete user.');
@@ -90,6 +192,69 @@ export default function Users() {
     } finally {
       setDeleteLoading(false);
     }
+  }
+
+
+  async function sendNotification(event) {
+    event.preventDefault();
+    if (!notificationTarget || notificationSending) return;
+
+    const recipientExists = users.some(
+      (user) =>
+        /^[a-f\d]{24}$/i.test(notificationDraftRecipientId) &&
+        String(user._id) === notificationDraftRecipientId
+    );
+    if (!recipientExists) {
+      showError('This recipient is no longer available. Your draft has been kept.');
+      return;
+    }
+
+    setNotificationSending(true);
+    try {
+      const response = await axiosFetch(
+        `${apiUrl}/api/admin/users/${notificationDraftRecipientId}/notifications`,
+        {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: notificationTitle,
+            message: notificationMessage,
+          }),
+        }
+      );
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Could not send notification.');
+      }
+
+      sessionStorage.removeItem(
+        notificationDraftKey(adminSessionId, notificationDraftRecipientId)
+      );
+      setNotificationTarget(null);
+      setNotificationDraftRecipientId('');
+      setNotificationTitle('');
+      setNotificationMessage('');
+      showSuccess('Notification sent successfully.');
+    } catch (error) {
+      showError(error.message || 'Could not send notification.');
+    } finally {
+      setNotificationSending(false);
+    }
+  }
+
+  function discardNotificationDraft() {
+    if (notificationSending) return;
+    if (adminSessionId && notificationDraftRecipientId) {
+      sessionStorage.removeItem(
+        notificationDraftKey(adminSessionId, notificationDraftRecipientId)
+      );
+    }
+    setNotificationTarget(null);
+    setNotificationDraftRecipientId('');
+    setNotificationTitle('');
+    setNotificationMessage('');
   }
 
   const columns = [
@@ -113,6 +278,10 @@ export default function Users() {
       ),
     },
   ];
+
+  const notificationDisplayTarget =
+    users.find((user) => String(user._id) === notificationDraftRecipientId) ||
+    notificationTarget;
 
   return (
     <DashboardLayout>
@@ -164,8 +333,24 @@ export default function Users() {
                 aria-label="Send Notification"
                 onClick={() => {
                   setNotificationTarget(user);
-                  setNotificationTitle('');
-                  setNotificationMessage('');
+                  if (notificationDraftRecipientId !== String(user._id)) {
+                    if (
+                      notificationDraftRecipientId &&
+                      (notificationTitle || notificationMessage)
+                    ) {
+                      setNotificationTarget(null);
+                      showError('Send or discard the current notification draft before selecting another user.');
+                      return;
+                    }
+                    if (adminSessionId && notificationDraftRecipientId) {
+                      sessionStorage.removeItem(
+                        notificationDraftKey(adminSessionId, notificationDraftRecipientId)
+                      );
+                    }
+                    setNotificationDraftRecipientId(String(user._id));
+                    setNotificationTitle('');
+                    setNotificationMessage('');
+                  }
                 }}
                 className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#176B45] text-white transition hover:bg-[#125638] focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2"
               >
@@ -180,7 +365,7 @@ export default function Users() {
         )}
       </section>
 
-      {notificationTarget && (
+      {notificationDraftReady && notificationTarget && (
         <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50 p-4">
           <div
             role="dialog"
@@ -197,14 +382,27 @@ export default function Users() {
                   Send Notification
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
-                  To: {notificationTarget.name?.trim() || notificationTarget.username}
+                  To: {notificationDisplayTarget?.name?.trim() || notificationDisplayTarget?.username}
                 </p>
+                {!users.some(
+                  (user) =>
+                    String(user._id) === notificationDraftRecipientId
+                ) && (
+                  <p role="alert" className="mt-2 text-sm text-red-700">
+                    {loading
+                      ? 'Checking recipient...'
+                      : 'This recipient is unavailable. Your draft is saved, but it cannot be sent.'}
+                  </p>
+                )}
               </div>
               <button
                 type="button"
                 title="Close"
                 aria-label="Close notification modal"
-                onClick={() => setNotificationTarget(null)}
+                onClick={() => {
+                  if (!notificationSending) discardNotificationDraft();
+                }}
+                disabled={notificationSending}
                 className="flex h-9 w-9 items-center justify-center rounded-lg text-xl text-gray-500 hover:bg-gray-100"
               >
                 ×
@@ -238,9 +436,18 @@ export default function Users() {
                 if (name === 'title') setNotificationTitle(value);
                 if (name === 'message') setNotificationMessage(value);
               }}
-              onSubmit={(event) => event.preventDefault()}
+              onSubmit={sendNotification}
               submitText="Send"
+              isSubmitting={notificationSending}
             />
+            <button
+              type="button"
+              onClick={discardNotificationDraft}
+              disabled={notificationSending}
+              className="mt-3 rounded-lg border border-[#D8E5D8] px-4 py-2 text-sm font-semibold text-[#52715D] transition hover:bg-[#F1F7F0] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Discard draft
+            </button>
           </div>
         </div>
       )}

@@ -81,7 +81,7 @@ export default function MenuItemDetails({
 
     let cancelled = false;
 
-    fetch('/api/auth/session', {
+    fetch('/api/auth/session-status', {
       credentials: 'include',
       cache: 'no-store',
     })
@@ -148,7 +148,7 @@ export default function MenuItemDetails({
     setReviewSuccess('');
 
     try {
-      const response = await fetch('/api/auth/session', {
+      const response = await fetch('/api/auth/session-status', {
         credentials: 'include',
         cache: 'no-store',
       });
@@ -461,7 +461,7 @@ export default function MenuItemDetails({
                 }
 
                 try {
-                  const response = await fetch("/api/auth/session", {
+                  const response = await fetch("/api/auth/session-status", {
                     credentials: "include",
                     cache: "no-store",
                   });

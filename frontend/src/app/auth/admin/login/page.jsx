@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -9,6 +9,32 @@ export default function AdminLoginPage() {
   const [secretCode, setSecretCode] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    fetch('/api/auth/session-status', { cache: 'no-store', credentials: 'include' })
+      .then((response) => {
+        if (!response.ok) throw new Error('Session status request failed');
+        return response.json();
+      })
+      .then((session) => {
+        if (!active || !session.authenticated) return;
+
+        if (session.role === 'admin') {
+          router.replace('/admin/dashboard');
+        } else if (session.role === 'user' && session.userId) {
+          router.replace(`/u/${session.userId}`);
+        }
+      })
+      .catch(() => {
+        if (active) setMessage('Unable to verify your current session. Please try again.');
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [router]);
 
   async function handleSubmit(event) {
     event.preventDefault();

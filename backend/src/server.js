@@ -67,6 +67,7 @@ app.use('/api/auth/session', sessionRateLimit);
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin/users', require('./routes/adminUsers'));
+app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/admin/membership-payments', require('./routes/adminMembershipPayments'));
 app.use('/api/admin/membership-attendance', require('./routes/adminMembershipAttendance'));
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axiosFetch from '@/lib/axios-fetch';
 import apiUrl from '@/services/api';
 import DashboardLayout from '../layout/DashboardLayout';
@@ -66,8 +66,10 @@ export default function MembershipPayments() {
   const [attendanceUsers, setAttendanceUsers] = useState([]);
   const [attendanceSelectedUser, setAttendanceSelectedUser] = useState('');
   const [attendanceMonth, setAttendanceMonth] = useState('');
+  const attendanceSelectionRef = useRef({ userId: '', month: '' });
   const [adminAttendance, setAdminAttendance] = useState(null);
   const [attendanceUsersLoading, setAttendanceUsersLoading] = useState(true);
+  const [attendanceUsersRefreshKey, setAttendanceUsersRefreshKey] = useState(0);
   const [adminAttendanceLoading, setAdminAttendanceLoading] = useState(false);
   const [adminAttendanceError, setAdminAttendanceError] = useState('');
   const [isAttendanceEditing, setIsAttendanceEditing] = useState(false);
@@ -139,6 +141,7 @@ export default function MembershipPayments() {
         current.map((item) => item._id === payment._id ? result.payment : item)
       );
       if (selectedPayment?._id === payment._id) setSelectedPayment(result.payment);
+      if (status === "Approved") setAttendanceUsersRefreshKey((current) => current + 1);
       showSuccess(`Membership payment ${status.toLowerCase()} successfully.`);
     } catch (error) {
       showError(error.message || `Could not ${action} payment.`);
@@ -198,6 +201,13 @@ export default function MembershipPayments() {
   }
 
   useEffect(() => {
+    attendanceSelectionRef.current = {
+      userId: attendanceSelectedUser,
+      month: attendanceMonth,
+    };
+  }, [attendanceSelectedUser, attendanceMonth]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function loadAttendanceUsers() {
@@ -220,8 +230,17 @@ export default function MembershipPayments() {
           const users = Array.isArray(result.users) ? result.users : [];
           setAttendanceUsers(users);
           if (users.length) {
-            setAttendanceSelectedUser(users[0]._id);
-            setAttendanceMonth(users[0].activeMonths?.[0] || '');
+            const selectedUser = users.find((user) => user._id === attendanceSelectionRef.current.userId);
+            const nextUser = selectedUser || users[0];
+            setAttendanceSelectedUser(nextUser._id);
+
+            const currentMonth = selectedUser && nextUser.activeMonths?.includes(attendanceSelectionRef.current.month)
+              ? attendanceSelectionRef.current.month
+              : (nextUser.activeMonths?.[0] || '');
+            setAttendanceMonth(currentMonth);
+          } else {
+            setAttendanceSelectedUser('');
+            setAttendanceMonth('');
           }
         }
       } catch (error) {
@@ -235,7 +254,7 @@ export default function MembershipPayments() {
 
     loadAttendanceUsers();
     return () => { cancelled = true; };
-  }, []);
+  }, [attendanceUsersRefreshKey]);
 
   useEffect(() => {
     if (!attendanceSelectedUser || !attendanceMonth) {
@@ -480,6 +499,14 @@ export default function MembershipPayments() {
               if (payment.status === 'Pending') {
                 return (
                   <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPayment(payment)}
+                      className="rounded-lg border border-[#D8E5D8] px-3 py-2 text-xs font-semibold text-[#174D35]"
+                    >
+                      Details
+                    </button>
+
                     <button
                       type="button"
                       disabled={Boolean(reviewingId)}
@@ -840,7 +867,7 @@ export default function MembershipPayments() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {[
                   ['User Name', selectedPayment.userId?.name || selectedPayment.userId?.username || '—'],
-                  ['Email', selectedPayment.userId?.email || selectedPayment.userId?.username || '—'],
+                  ['Email', selectedPayment.userId?.email || '—'],
                   ['Membership Month', selectedPayment.membershipMonth || '—'],
                   ['Amount', money(selectedPayment.amount)],
                   ['Payer Name', selectedPayment.name || '—'],

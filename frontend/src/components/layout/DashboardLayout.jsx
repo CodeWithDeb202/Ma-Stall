@@ -16,11 +16,12 @@ export default function DashboardLayout({ children }) {
   const [role, setRole] = useState(null);
   const [userId, setUserId] = useState(null);
   const [sessionChecked, setSessionChecked] = useState(false);
+  const [sessionError, setSessionError] = useState('');
 
   useEffect(() => {
     let active = true;
 
-    async function verifyAdmin() {
+    async function verifySession() {
       try {
         const response = await fetch('/api/auth/session-status', {
           method: 'GET',
@@ -32,8 +33,12 @@ export default function DashboardLayout({ children }) {
 
         if (!active) return;
 
+        if (!response.ok) {
+          setSessionError('Unable to verify your session. Check your connection and try again.');
+          return;
+        }
+
         if (
-          response.ok &&
           data.success === true &&
           data.authenticated === true &&
           ['admin', 'user'].includes(data.role)
@@ -41,21 +46,39 @@ export default function DashboardLayout({ children }) {
           setRole(data.role);
           setUserId(data.role === 'user' ? data.userId : null);
         } else {
-          router.replace('/auth/admin/login');
+          setRole(null);
         }
       } catch {
-        if (active) router.replace('/auth/admin/login');
+        if (active) {
+          setRole(null);
+          setSessionError('Unable to verify your session. Check your connection and try again.');
+        }
       } finally {
         if (active) setSessionChecked(true);
       }
     }
 
-    verifyAdmin();
+    verifySession();
 
     return () => {
       active = false;
     };
   }, [router]);
+
+  useEffect(() => {
+    if (!sessionChecked || sessionError) return;
+
+    const isAdminRoute = pathname.startsWith('/admin/');
+    const isUserRoute = pathname.startsWith('/u/');
+
+    if (!role) {
+      router.replace(isUserRoute ? '/auth/login' : '/auth/admin/login');
+    } else if (isAdminRoute && role !== 'admin') {
+      router.replace(userId ? `/u/${userId}` : '/');
+    } else if (isUserRoute && role !== 'user') {
+      router.replace('/admin/dashboard');
+    }
+  }, [pathname, role, router, sessionChecked, sessionError, userId]);
 
 
   const activeSection =
@@ -115,7 +138,26 @@ export default function DashboardLayout({ children }) {
     setMobileMenuOpen(false);
   }
 
-  if (!sessionChecked || !role) {
+  if (sessionError) {
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-[#F8FBF7] px-4">
+        <p role="alert" className="text-center text-sm text-red-700">{sessionError}</p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="rounded-lg bg-[#176B45] px-4 py-2 font-semibold text-white hover:bg-[#174D35]"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const routeRoleMismatch =
+    (pathname.startsWith('/admin/') && role !== 'admin') ||
+    (pathname.startsWith('/u/') && role !== 'user');
+
+  if (!sessionChecked || !role || routeRoleMismatch) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-[#F8FBF7]">
         <Spinner label="Verifying access..." />

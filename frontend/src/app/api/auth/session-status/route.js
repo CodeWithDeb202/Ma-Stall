@@ -14,17 +14,29 @@ export async function GET(request) {
       validateStatus: () => true,
     });
 
+    const responseHeaders = new Headers({ "Cache-Control": "no-store" });
+    const setCookies = backendResponse.headers["set-cookie"];
+    if (setCookies) {
+      const isLocal = new URL(request.url).hostname === "localhost";
+      for (const setCookie of Array.isArray(setCookies) ? setCookies : [setCookies]) {
+        const cookie = isLocal
+          ? setCookie.replace(/;\s*Secure/gi, "").replace(/;\s*SameSite=None/gi, "; SameSite=Lax")
+          : setCookie;
+        responseHeaders.append("Set-Cookie", cookie);
+      }
+    }
+
     if (backendResponse.status === 401) {
       return NextResponse.json(
         { success: true, authenticated: false, role: null, userId: null },
-        { status: 200, headers: { "Cache-Control": "no-store" } },
+        { status: 200, headers: responseHeaders },
       );
     }
 
     if (backendResponse.status !== 200) {
       return NextResponse.json(
         { success: false, authenticated: false },
-        { status: backendResponse.status, headers: { "Cache-Control": "no-store" } },
+        { status: backendResponse.status, headers: responseHeaders },
       );
     }
 
@@ -43,7 +55,7 @@ export async function GET(request) {
             userId: data.role === "user" ? data.userId : null,
           }
         : { success: true, authenticated: false, role: null, userId: null },
-      { status: 200, headers: { "Cache-Control": "no-store" } },
+      { status: 200, headers: responseHeaders },
     );
   } catch (error) {
     console.error("[SESSION STATUS ERROR]", {

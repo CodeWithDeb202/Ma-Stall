@@ -7,36 +7,21 @@ const Membership = require('../models/Membership');
 const MembershipAttendance = require('../models/MembershipAttendance');
 const MembershipPayment = require('../models/MembershipPayment');
 const MenuItemReview = require('../models/MenuItemReview');
+const Session = require('../models/Session');
+const Notification = require('../models/Notification');
 const cloudinary = require('../config/cloudinary');
+const {
+  clearSessionCookie,
+  createSession,
+  revokeSession,
+  setSessionCookie,
+} = require('../session');
 
 const { OAuth2Client } = require('google-auth-library');
 const uploadProfileImage = require('../middleware/uploadProfileImage');
 const downloadGoogleProfileImage = require('../middleware/downloadGoogleProfileImage');
 const router = express.Router();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
-function setSessionCookie(res, token) {
-  const isProduction = process.env.NODE_ENV === 'production';
-
-  res.cookie('ma_stall_session', token, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
-    maxAge: 8 * 60 * 60 * 1000,
-    path: '/',
-  });
-}
-
-function createSessionToken(role = 'admin', userId = '') {
-  const sessionSecret = process.env.SESSION_SECRET;
-  if (!sessionSecret) throw new Error('SESSION_SECRET is missing');
-  if (role !== 'admin' && role !== 'user') throw new Error('Invalid session role');
-  const issuedAt = Date.now().toString();
-  const nonce = crypto.randomUUID();
-  const payload = `${issuedAt}.${nonce}.${role}.${userId || '-'}`;
-  const signature = crypto.createHmac('sha256', sessionSecret).update(payload).digest('hex');
-  return `${payload}.${signature}`;
-}
 
 async function createUniqueGoogleUsername(displayName) {
   const baseName = displayName.trim().slice(0, 80);
@@ -140,7 +125,8 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    setSessionCookie(res, createSessionToken("user", user._id.toString()));
+    const session = await createSession('user', user._id.toString());
+    setSessionCookie(res, session.token, session.expiresAt);
 
     return res.json({
       success: true,
@@ -227,7 +213,8 @@ router.post('/google', async (req, res) => {
       }
     }
 
-    setSessionCookie(res, createSessionToken('user', user._id.toString()));
+    const session = await createSession('user', user._id.toString());
+    setSessionCookie(res, session.token, session.expiresAt);
     return res.json({
       success: true,
       message: 'Google sign-in successful.',
@@ -246,8 +233,8 @@ router.post('/google', async (req, res) => {
   }
 });
 
-// Existing admin secret-code login, kept compatible with current sessions.
-router.post('/verify', (req, res) => {
+// Admin authentication uses the existing secret-code flow.
+router.post('/verify', async (req, res) => {
   const { secretCode } = req.body || {};
   const expectedCode = process.env.ACCESS_CODE;
   const sessionSecret = process.env.SESSION_SECRET;
@@ -277,7 +264,8 @@ router.post('/verify', (req, res) => {
   }
 
   try {
-    setSessionCookie(res, createSessionToken("admin"));
+    const session = await createSession('admin');
+    setSessionCookie(res, session.token, session.expiresAt);
     return res.json({ success: true });
   } catch (error) {
     console.error('[AUTH VERIFY] Session creation failed', error.message);
@@ -289,22 +277,29 @@ router.post('/verify', (req, res) => {
 });
 
 router.get('/session', require('../middleware/requireAuth'), (req, res) => {
-  res.json({ success: true, authenticated: true, role: req.auth.role, userId: req.auth.userId });
+  res.json({
+    success: true,
+    authenticated: true,
+    role: req.auth.role,
+    userId: req.auth.userId,
+    sessionId: req.auth.role === 'admin' ? req.auth.sessionId : undefined,
+  });
 });
 
 
-// Logout: clear the browser's session cookie.
-router.post('/logout', (req, res) => {
-  const isProduction = process.env.NODE_ENV === 'production';
-
-  res.clearCookie('ma_stall_session', {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
-    path: '/',
-  });
-
-  return res.json({ success: true, message: 'Logged out successfully.' });
+// Revoke this browser's session without affecting other devices.
+router.post('/logout', async (req, res) => {
+  try {
+    await revokeSession(req.cookies?.ma_stall_session);
+    clearSessionCookie(res);
+    return res.json({ success: true, message: 'Logged out successfully.' });
+  } catch (error) {
+    console.error('[AUTH LOGOUT] Session revocation failed:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Unable to log out right now. Please try again.',
+    });
+  }
 });
 
 // All account-management routes require an authenticated normal user.
@@ -482,6 +477,8 @@ router.delete('/account', requireAuth, requireUser, async (req, res) => {
       await MembershipAttendance.deleteMany({ userId: user._id }).session(session);
       await MembershipPayment.deleteMany({ userId: user._id }).session(session);
       await MenuItemReview.deleteMany({ userId: user._id }).session(session);
+      await Notification.deleteMany({ recipientId: user._id }).session(session);
+      await Session.deleteMany({ role: 'user', userId: user._id.toString() }).session(session);
 
       // Delete the user only after their owned records are removed.
       await User.deleteOne({
@@ -508,13 +505,7 @@ router.delete('/account', requireAuth, requireUser, async (req, res) => {
       }
     }
 
-    const isProduction = process.env.NODE_ENV === 'production';
-    res.clearCookie('ma_stall_session', {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
-      path: '/',
-    });
+    clearSessionCookie(res);
 
     return res.json({
       success: true,

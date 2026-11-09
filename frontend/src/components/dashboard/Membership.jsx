@@ -566,12 +566,12 @@ export default function Membership() {
             </p>
           </div>
           <span className={`rounded-full px-3 py-1.5 text-sm font-semibold ${payment?.status === 'Approved'
-              ? 'bg-green-100 text-green-800'
-              : payment?.status === 'Rejected'
-                ? 'bg-red-100 text-red-700'
-                : payment?.status === 'Pending'
-                  ? 'bg-amber-100 text-amber-800'
-                  : 'bg-gray-100 text-gray-700'
+            ? 'bg-green-100 text-green-800'
+            : payment?.status === 'Rejected'
+              ? 'bg-red-100 text-red-700'
+              : payment?.status === 'Pending'
+                ? 'bg-amber-100 text-amber-800'
+                : 'bg-gray-100 text-gray-700'
             }`}>
             {payment?.status || 'Not Paid'}
           </span>
@@ -579,14 +579,21 @@ export default function Membership() {
         {payment?.status === 'Pending' && (
           <p className="mt-3 border-t border-[#E5EEE4] pt-3 text-sm leading-6 text-[#52715D]">
             Please contact the administrator by phone to confirm your payment and activate your membership.
-            <span className="block font-semibold">Admin contact number will be updated here.</span>
+            <span className="block font-semibold">
+              Admin contact number &nbsp;
+              <a
+                href="tel:8018746834"
+                className="mt-2 inline-block font-semibold text-[#087A43] underline underline-offset-2 hover:text-[#065F35]"
+              >
+                8018746834
+              </a>
+            </span>
           </p>
         )}
         {payment?.status === 'Rejected' && payment.adminNote && (
           <p className="mt-3 text-sm text-red-700">Admin note: {payment.adminNote}</p>
         )}
       </section>
-
 
       {payment?.status === 'Approved' && (
         <section className="mt-6 rounded-2xl border border-[#D8E5D8] bg-white p-5">
