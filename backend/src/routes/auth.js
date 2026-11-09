@@ -3,7 +3,11 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 
+const { OAuth2Client } = require('google-auth-library');
+const uploadProfileImage = require('../middleware/uploadProfileImage');
+const downloadGoogleProfileImage = require('../middleware/downloadGoogleProfileImage');
 const router = express.Router();
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 function setSessionCookie(res, token) {
   const isProduction = process.env.NODE_ENV === 'production';
@@ -26,6 +30,20 @@ function createSessionToken(role = 'admin', userId = '') {
   const payload = `${issuedAt}.${nonce}.${role}.${userId || '-'}`;
   const signature = crypto.createHmac('sha256', sessionSecret).update(payload).digest('hex');
   return `${payload}.${signature}`;
+}
+
+async function createUniqueGoogleUsername(displayName) {
+  const baseName = displayName.trim().slice(0, 80);
+  let username = baseName;
+  let suffix = 2;
+
+  while (await User.exists({ username })) {
+    const suffixText = ' ' + suffix;
+    username = baseName.slice(0, 80 - suffixText.length) + suffixText;
+    suffix += 1;
+  }
+
+  return username;
 }
 
 // Public user registration. Role is always user; client-supplied roles are ignored.
@@ -123,6 +141,9 @@ router.post('/login', async (req, res) => {
       message: 'Login successful.',
       user: {
         username: user.username,
+        name: user.name || user.username,
+        email: user.email || '',
+        profileImage: user.profileImage || '',
         role: user.role,
       },
     });
@@ -133,6 +154,89 @@ router.post('/login', async (req, res) => {
       success: false,
       message: 'Unable to log in right now. Please try again.',
     });
+  }
+});
+
+// Google Sign-In. Existing local accounts are never linked by email alone.
+router.post('/google', async (req, res) => {
+  try {
+    const credential = typeof req.body?.credential === 'string' ? req.body.credential : '';
+    if (!credential || !process.env.GOOGLE_CLIENT_ID) {
+      return res.status(400).json({ success: false, message: 'Google sign-in is not configured correctly.' });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+
+    if (!payload?.sub || !payload.email || payload.email_verified !== true) {
+      return res.status(401).json({ success: false, message: 'Google account verification failed.' });
+    }
+
+    let user = await User.findOne({ googleId: payload.sub }).select('+password');
+
+    if (user && user.role !== 'user') {
+      return res.status(403).json({ success: false, message: 'This account cannot sign in here.' });
+    }
+
+    if (!user) {
+      const displayName = typeof payload.name === 'string' && payload.name.trim()
+        ? payload.name.trim()
+        : payload.email.split('@')[0];
+      const username = await createUniqueGoogleUsername(displayName);
+      let profileImage = '';
+      let profileImagePublicId = '';
+
+      if (typeof payload.picture === 'string' && payload.picture) {
+        try {
+          const imageBuffer = await downloadGoogleProfileImage(payload.picture);
+          const uploadedImage = await uploadProfileImage(imageBuffer);
+          profileImage = uploadedImage.url;
+          profileImagePublicId = uploadedImage.publicId;
+        } catch (imageError) {
+          console.error('[AUTH GOOGLE] Profile image upload failed:', imageError.message);
+        }
+      }
+
+      user = await User.create({
+        username,
+        googleId: payload.sub,
+        email: payload.email,
+        name: displayName,
+        profileImage,
+        profileImagePublicId,
+        role: 'user',
+      });
+    } else if (!user.profileImage && typeof payload.picture === 'string' && payload.picture) {
+      try {
+        const imageBuffer = await downloadGoogleProfileImage(payload.picture);
+        const uploadedImage = await uploadProfileImage(imageBuffer);
+        user.profileImage = uploadedImage.url;
+        user.profileImagePublicId = uploadedImage.publicId;
+        await user.save();
+      } catch (imageError) {
+        console.error('[AUTH GOOGLE] Profile image upload failed:', imageError.message);
+      }
+    }
+
+    setSessionCookie(res, createSessionToken('user', user._id.toString()));
+    return res.json({
+      success: true,
+      message: 'Google sign-in successful.',
+      user: {
+        id: user._id,
+        username: user.username,
+        name: user.name || user.username,
+        email: user.email,
+        profileImage: user.profileImage || '',
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error('[AUTH GOOGLE] Sign-in failed:', error.message);
+    return res.status(401).json({ success: false, message: 'Unable to sign in with this Google account.' });
   }
 });
 
@@ -217,7 +321,7 @@ router.get('/account', requireAuth, requireUser, async (req, res) => {
     const user = await User.findOne({
       _id: req.auth.userId,
       role: 'user',
-    }).select('username role');
+    }).select('username name email profileImage role');
 
     if (!user) {
       return res.status(404).json({
@@ -230,6 +334,9 @@ router.get('/account', requireAuth, requireUser, async (req, res) => {
       success: true,
       user: {
         username: user.username,
+        name: user.name || user.username,
+        email: user.email || '',
+        profileImage: user.profileImage || '',
         role: user.role,
       },
     });
@@ -349,23 +456,34 @@ router.delete('/account', requireAuth, requireUser, async (req, res) => {
         ? req.body.currentPassword
         : '';
 
-    if (!currentPassword || currentPassword.length > 128) {
-      return res.status(400).json({
-        success: false,
-        message: 'Enter your current password to delete your account.',
-      });
-    }
-
     const user = await User.findOne({
       _id: req.auth.userId,
       role: 'user',
     }).select('+password');
 
-    if (!user || !(await bcrypt.compare(currentPassword, user.password))) {
-      return res.status(401).json({
+    if (!user) {
+      return res.status(404).json({
         success: false,
-        message: 'Current password is incorrect.',
+        message: 'User account not found.',
       });
+    }
+
+    // Google-authenticated users do not have a password.
+    // Password-based users must verify their current password.
+    if (!user.googleId) {
+      if (!currentPassword || currentPassword.length > 128) {
+        return res.status(400).json({
+          success: false,
+          message: 'Enter your current password to delete your account.',
+        });
+      }
+
+      if (!user.password || !(await bcrypt.compare(currentPassword, user.password))) {
+        return res.status(401).json({
+          success: false,
+          message: 'Current password is incorrect.',
+        });
+      }
     }
 
     await User.deleteOne({ _id: user._id, role: 'user' });

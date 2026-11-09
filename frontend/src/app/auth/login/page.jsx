@@ -1,15 +1,92 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import Script from 'next/script';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
   const router = useRouter();
+  const googleButtonRef = useRef(null);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+
+  async function handleGoogleCredential(response) {
+    setMessage('');
+    setLoading(true);
+
+    try {
+      const googleResponse = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: response.credential }),
+      });
+
+      const googleData = await googleResponse.json().catch(() => ({}));
+
+      if (!googleResponse.ok || !googleData.success) {
+        setMessage(googleData.message || 'Google sign-in failed. Please try again.');
+        return;
+      }
+
+      const sessionResponse = await fetch('/api/auth/session-status', {
+        method: 'GET',
+        cache: 'no-store',
+      });
+      const sessionData = await sessionResponse.json().catch(() => ({}));
+
+      if (
+        !sessionResponse.ok ||
+        !sessionData.authenticated ||
+        sessionData.role !== 'user' ||
+        !sessionData.userId
+      ) {
+        setMessage('Google sign-in succeeded, but session verification failed. Please try again.');
+        return;
+      }
+
+      const next = new URLSearchParams(window.location.search).get('next');
+      const safeNext =
+        next && /^\/menu-items\/[a-f\d]{24}$/i.test(next)
+          ? `/u/${sessionData.userId}/dashboard${next}`
+          : `/u/${sessionData.userId}`;
+
+      router.replace(safeNext);
+      router.refresh();
+    } catch {
+      setMessage('Unable to connect to the server. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function initializeGoogleSignIn() {
+    if (
+      !window.google?.accounts?.id ||
+      !googleButtonRef.current ||
+      !process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+    ) {
+      setMessage('Google Sign-In is not configured correctly.');
+      return;
+    }
+
+    googleButtonRef.current.innerHTML = '';
+
+    window.google.accounts.id.initialize({
+      client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+      callback: handleGoogleCredential,
+    });
+
+    window.google.accounts.id.renderButton(googleButtonRef.current, {
+      theme: 'outline',
+      size: 'large',
+      shape: 'rectangular',
+      text: 'continue_with',
+      width: 350,
+    });
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -74,6 +151,12 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#F8FBF7] px-4 py-10">
+      <Script
+        src="https://accounts.google.com/gsi/client"
+        strategy="afterInteractive"
+        onLoad={initializeGoogleSignIn}
+        onError={() => setMessage('Unable to load Google Sign-In. Please try again.')}
+      />
       <section className="w-full max-w-md rounded-2xl border border-[#D8E5D8] bg-white p-6 shadow-sm sm:p-8">
         <Link href="/" className="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-white px-4 py-2.5 font-semibold text-green-800 transition hover:bg-green-50">
           ← Back to home
@@ -89,7 +172,20 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-7 space-y-5">
+        <div className="mt-7">
+          <div
+            ref={googleButtonRef}
+            className="flex min-h-10 justify-center"
+          />
+
+          <div className="my-5 flex items-center gap-3">
+            <div className="h-px flex-1 bg-[#D8E5D8]" />
+            <span className="text-xs font-medium text-[#829587]">OR LOGIN WITH USERNAME</span>
+            <div className="h-px flex-1 bg-[#D8E5D8]" />
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="mt-0 space-y-5">
           <div>
             <label htmlFor="username" className="mb-2 block text-sm font-semibold text-[#174D35]">
               Username

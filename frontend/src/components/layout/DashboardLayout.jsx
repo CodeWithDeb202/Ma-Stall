@@ -59,7 +59,11 @@ export default function DashboardLayout({ children }) {
 
 
   const activeSection =
-    pathname === '/admin/overview'
+    pathname === '/admin/dashboard/membership'
+      ? 'membership'
+      : pathname === '/admin/dashboard/users'
+      ? 'users'
+      : pathname === '/admin/overview'
       ? 'overview'
       : pathname === '/admin/dashboard/purchase-product-list'
         ? 'purchase-products'
@@ -70,6 +74,8 @@ export default function DashboardLayout({ children }) {
             userId &&
             pathname === `/u/${userId}/dashboard/menu-items`)
             ? 'menu-items'
+          : role === 'user' && userId && pathname === `/u/${userId}/dashboard/membership`
+            ? 'membership'
           : pathname === '/admin/dashboard/daily-buying-product-list'
             ? 'daily-buying'
             : pathname === '/admin/dashboard/total-revenue'
@@ -83,8 +89,12 @@ export default function DashboardLayout({ children }) {
   function handleSectionChange(section) {
     const routes = {
       overview: '/admin/overview',
+      users: '/admin/dashboard/users',
       'purchase-products': '/admin/dashboard/purchase-product-list',
       'stock-products': '/admin/dashboard/stock-products',
+      'membership': role === 'user'
+        ? `/u/${userId}/dashboard/membership`
+        : '/admin/dashboard/membership',
       'menu-items':
         role === 'user'
           ? `/u/${userId}/dashboard/menu-items`

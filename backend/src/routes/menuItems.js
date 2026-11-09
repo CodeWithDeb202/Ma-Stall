@@ -77,6 +77,7 @@ router.get('/public/:itemId/reviews', async (req, res) => {
 
     const reviews = await MenuItemReview.find({ itemId })
       .select('userId username message rating createdAt')
+      .populate('userId', 'profileImage')
       .sort({ createdAt: -1 })
       .lean();
 

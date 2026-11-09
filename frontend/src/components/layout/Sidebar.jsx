@@ -10,11 +10,13 @@ export default function Sidebar({ activeSection, onSectionChange, role = 'admin'
         { id: 'total-revenue', label: 'Total Revenue' },
         { id: 'selling-product', label: 'Selling Product' },
         { id: 'menu-items', label: 'Menu Items' },
+        { id: 'membership', label: 'Membership' },
+        { id: 'users', label: 'Users' },
     ];
 
     const visibleMenuItems = role === 'admin'
         ? menuItems
-        : menuItems.filter((item) => item.id === 'menu-items');
+        : menuItems.filter((item) => ['menu-items', 'membership'].includes(item.id));
 
     return (
         <aside className="flex w-full min-w-0 flex-col border-0 bg-white p-1 md:h-full md:w-64 md:shrink-0 md:border-r md:border-[#D8E5D8] md:p-4">

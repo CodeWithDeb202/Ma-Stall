@@ -8,13 +8,36 @@ const userSchema = new mongoose.Schema(
       unique: true,
       trim: true,
       minlength: 3,
-      maxlength: 30,
-      lowercase: true,
+      maxlength: 80,
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      required: function () {
+        return !this.googleId;
+      },
       select: false,
+    },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
+    name: {
+      type: String,
+      trim: true,
+    },
+    profileImage: {
+      type: String,
+      default: '',
+    },
+    profileImagePublicId: {
+      type: String,
+      default: '',
     },
     role: {
       type: String,

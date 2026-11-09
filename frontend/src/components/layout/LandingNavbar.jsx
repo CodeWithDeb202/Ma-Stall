@@ -7,6 +7,7 @@ import Link from 'next/link';
 export default function LandingNavbar({ showProfile = false }) {
   const [role, setRole] = useState(null);
   const [userId, setUserId] = useState(null);
+  const [profileImage, setProfileImage] = useState('');
   const [checkedSession, setCheckedSession] = useState(false);
 
   useEffect(() => {
@@ -31,6 +32,21 @@ export default function LandingNavbar({ showProfile = false }) {
 
           setRole(validSession ? data.role : null);
           setUserId(validSession && data.role === 'user' ? data.userId : null);
+
+          if (validSession && data.role === 'user') {
+            const accountResponse = await fetch('/api/auth/account', {
+              method: 'GET',
+              cache: 'no-store',
+              credentials: 'include',
+            });
+            const accountData = await accountResponse.json().catch(() => ({}));
+
+            if (active && accountResponse.ok) {
+              setProfileImage(accountData.user?.profileImage || '');
+            }
+          } else {
+            setProfileImage('');
+          }
         }
       } catch {
         if (active) setRole(null);
@@ -81,29 +97,49 @@ export default function LandingNavbar({ showProfile = false }) {
         </Link>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          {!checkedSession ? null : role ? (
+          {!checkedSession ? (
+            <span role="status" aria-label="Loading dashboard" className="inline-flex h-10 w-10 items-center justify-center">
+              <span className="h-6 w-6 animate-spin rounded-full border-2 border-[#D8E5D8] border-t-[#176B45]" />
+            </span>
+          ) : role ? (
             showProfile ? (
-              <Link
+              <div className="flex items-center gap-2 sm:gap-3">
+                {role === 'user' && userId && (
+                  <Link
+                    href={"/u/" + userId + "/notifications"}
+                    aria-label="Notifications"
+                    title="Notifications"
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-[#D8E5D8] text-[#176B45] transition hover:bg-[#E8F3E9] hover:ring-2 hover:ring-[#B8D8C2]"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden="true">
+                      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+                      <path d="M10 21h4" />
+                    </svg>
+                  </Link>
+                )}
+                <Link
                 href={profileHref}
                 aria-label={role === 'admin' ? 'Go to admin dashboard' : 'Go to user account'}
                 title={role === 'admin' ? 'Admin Dashboard' : 'My Account'}
                 className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border-2 border-[#176B45] transition hover:ring-2 hover:ring-[#B8D8C2]"
               >
                 <Image
-                  src="/default-profile.svg"
+                  src={profileImage || '/default-profile.svg'}
                   alt="Profile"
                   width={44}
                   height={44}
                   priority
+                  onError={() => setProfileImage('/default-profile.svg')}
                   className="h-full w-full object-cover"
                 />
-              </Link>
+                </Link>
+              </div>
             ) : (
               <Link
                 href={role === 'admin' ? '/admin/dashboard' : `/u/${userId}`}
                 className="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#176B45] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#174D35]"
               >
-                Navigate to Dashboard
+                Dashboard
               </Link>
             )
           ) : (
@@ -115,19 +151,6 @@ export default function LandingNavbar({ showProfile = false }) {
                 Get Started
               </Link>
 
-              <Link
-                href="/auth/login"
-                className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[#176B45] px-3 py-2 text-sm font-semibold text-[#176B45] transition hover:bg-[#E8F2E8] sm:px-4"
-              >
-                User Login
-              </Link>
-
-              <Link
-                href="/auth/admin/login"
-                className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[#176B45] px-3 py-2 text-sm font-semibold text-[#176B45] transition hover:bg-[#E8F2E8] sm:px-4"
-              >
-                Admin Login
-              </Link>
             </>
           )}
         </div>

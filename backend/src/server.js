@@ -58,6 +58,7 @@ const sessionRateLimit = rateLimit({
 
 // Apply strict limits only to sensitive authentication endpoints.
 app.use('/api/auth/login', loginRateLimit);
+app.use('/api/auth/google', loginRateLimit);
 app.use('/api/auth/register', loginRateLimit);
 app.use('/api/auth/verify', loginRateLimit);
 
@@ -65,6 +66,9 @@ app.use('/api/auth/verify', loginRateLimit);
 app.use('/api/auth/session', sessionRateLimit);
 
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/admin/users', require('./routes/adminUsers'));
+app.use('/api/admin/membership-payments', require('./routes/adminMembershipPayments'));
+app.use('/api/admin/membership-attendance', require('./routes/adminMembershipAttendance'));
 
 
 app.use('/api/records', require('./routes/dailyRecords'));
@@ -73,6 +77,9 @@ app.use('/api/daily-buying-products', require('./routes/dailyBuyingProducts'));
 app.use('/api/purchase-products', require('./routes/purchaseProducts'));
 app.use('/api/stock-products', require('./routes/stockProducts'));
 app.use('/api/menu-items', require('./routes/menuItems'));
+app.use('/api/memberships', require('./routes/memberships'));
+app.use('/api/membership-payments', require('./routes/membershipPayments'));
+app.use('/api/membership-attendance', require('./routes/membershipAttendance'));
 app.use('/api/daily-buying-payments', require('./routes/dailyBuyingProfitPayments'));
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'Ma Stall API is running' });

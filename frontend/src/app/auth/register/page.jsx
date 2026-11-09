@@ -1,15 +1,91 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import Script from 'next/script';
+import { useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function RegisterPage() {
+  const router = useRouter();
+  const googleButtonRef = useRef(null);
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  async function handleGoogleCredential(response) {
+    setMessage('');
+    setSuccess(false);
+    setLoading(true);
+
+    try {
+      const googleResponse = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: response.credential }),
+      });
+
+      const googleData = await googleResponse.json().catch(() => ({}));
+
+      if (!googleResponse.ok || !googleData.success) {
+        setMessage(googleData.message || 'Google sign-in failed. Please try again.');
+        return;
+      }
+
+      const sessionResponse = await fetch('/api/auth/session-status', {
+        method: 'GET',
+        cache: 'no-store',
+      });
+
+      const sessionData = await sessionResponse.json().catch(() => ({}));
+
+      if (
+        !sessionResponse.ok ||
+        !sessionData.authenticated ||
+        sessionData.role !== 'user' ||
+        !sessionData.userId
+      ) {
+        setMessage('Google sign-in succeeded, but session verification failed. Please try again.');
+        return;
+      }
+
+      router.replace(`/u/${sessionData.userId}`);
+      router.refresh();
+    } catch {
+      setMessage('Unable to connect to the server. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function initializeGoogleSignIn() {
+    if (
+      !window.google?.accounts?.id ||
+      !googleButtonRef.current ||
+      !process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+    ) {
+      setMessage('Google Sign-In is not configured correctly.');
+      return;
+    }
+
+    googleButtonRef.current.innerHTML = '';
+
+    window.google.accounts.id.initialize({
+      client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+      callback: handleGoogleCredential,
+    });
+
+    window.google.accounts.id.renderButton(googleButtonRef.current, {
+      theme: 'outline',
+      size: 'large',
+      shape: 'rectangular',
+      text: 'continue_with',
+      width: 350,
+    });
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -66,6 +142,13 @@ export default function RegisterPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#F8FBF7] px-4 py-10">
+      <Script
+        src="https://accounts.google.com/gsi/client"
+        strategy="afterInteractive"
+        onLoad={initializeGoogleSignIn}
+        onError={() => setMessage('Unable to load Google Sign-In. Please try again.')}
+      />
+
       <section className="w-full max-w-md rounded-2xl border border-[#D8E5D8] bg-white p-6 shadow-sm sm:p-8">
         <Link
           href="/"
@@ -84,7 +167,20 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-7 space-y-5">
+        <div className="mt-7">
+          <div
+            ref={googleButtonRef}
+            className="flex min-h-10 justify-center"
+          />
+
+          <div className="my-5 flex items-center gap-3">
+            <div className="h-px flex-1 bg-[#D8E5D8]" />
+            <span className="text-xs font-medium text-[#829587]">OR REGISTER WITH EMAIL</span>
+            <div className="h-px flex-1 bg-[#D8E5D8]" />
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label
               htmlFor="username"
@@ -186,6 +282,16 @@ export default function RegisterPage() {
             className="font-semibold text-[#176B45] hover:underline"
           >
             User login
+          </Link>
+        </p>
+
+        <p className="mt-3 text-center text-sm text-[#52715D]">
+          Are you an administrator?{' '}
+          <Link
+            href="/auth/admin/login"
+            className="font-semibold text-[#176B45] hover:underline"
+          >
+            Admin login
           </Link>
         </p>
       </section>

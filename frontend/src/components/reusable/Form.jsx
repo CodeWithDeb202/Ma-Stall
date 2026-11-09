@@ -11,6 +11,7 @@ export default function Form({
     isSubmitting = false,
     message = '',
     messageType = 'info',
+    fieldsClassName = 'mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4',
 }) {
 
     const numberInputClass = '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
@@ -24,7 +25,7 @@ export default function Form({
                 <h2 className="text-xl font-semibold">{title}</h2>
             )}
 
-            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className={fieldsClassName}>
                 {fields.map((field) => (
                     <label
                         key={field.name}
@@ -32,25 +33,47 @@ export default function Form({
                     >
                         {field.label}
 
-                        <input
-                            type={field.type || 'text'}
-                            name={field.name}
-                            value={values[field.name] ?? ''}
-                            onWheel={(event) => {
-                                if (field.type === 'number') {
-                                    event.currentTarget.blur();
-                                }
-                            }}
-                            onChange={(event) =>
-                                onChange(field.name, event.target.value)
-                            }
-                            placeholder={field.placeholder || ''}
-                            min={field.min}
-                            step={field.step}
-                            required={field.required || false}
-                            disabled={field.disabled || false}
-                            className={`mt-2 w-full rounded-lg border border-[#D8E5D8] p-3 outline-none focus:ring-2 focus:ring-[#176B45] disabled:bg-gray-100 ${field.type === 'number' ? numberInputClass : ''}`}
-                        />
+                        {field.type === 'select' ? (
+                            <select
+                                name={field.name}
+                                value={values[field.name] ?? ''}
+                                onChange={(event) => onChange(field.name, event.target.value)}
+                                required={field.required || false}
+                                disabled={field.disabled || false}
+                                className="mt-2 w-full rounded-lg border border-[#D8E5D8] bg-white p-3 outline-none focus:ring-2 focus:ring-[#176B45] disabled:bg-gray-100"
+                            >
+                                {(field.options || []).map((option) => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                            </select>
+                        ) : field.type === 'textarea' ? (
+                            <textarea
+                                name={field.name}
+                                value={values[field.name] ?? ''}
+                                onChange={(event) => onChange(field.name, event.target.value)}
+                                placeholder={field.placeholder || ''}
+                                rows={field.rows || 5}
+                                required={field.required || false}
+                                disabled={field.disabled || false}
+                                className="mt-2 w-full resize-y rounded-lg border border-[#D8E5D8] p-3 outline-none focus:ring-2 focus:ring-[#176B45] disabled:bg-gray-100"
+                            />
+                        ) : (
+                            <input
+                                type={field.type || 'text'}
+                                name={field.name}
+                                value={values[field.name] ?? ''}
+                                onWheel={(event) => {
+                                    if (field.type === 'number') event.currentTarget.blur();
+                                }}
+                                onChange={(event) => onChange(field.name, event.target.value)}
+                                placeholder={field.placeholder || ''}
+                                min={field.min}
+                                step={field.step}
+                                required={field.required || false}
+                                disabled={field.disabled || false}
+                                className={`mt-2 w-full rounded-lg border border-[#D8E5D8] p-3 outline-none focus:ring-2 focus:ring-[#176B45] disabled:bg-gray-100 ${field.type === 'number' ? numberInputClass : ''}`}
+                            />
+                        )}
                     </label>
                 ))}
             </div>

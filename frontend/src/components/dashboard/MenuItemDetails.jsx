@@ -723,11 +723,14 @@ export default function MenuItemDetails({
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex min-w-0 items-center gap-3">
                                   <Image
-                                    src="/default-profile.svg"
+                                    src={review.userId?.profileImage || "/default-profile.svg"}
                                     alt=""
                                     aria-hidden="true"
                                     width={40}
                                     height={40}
+                                    onError={(event) => {
+                                      event.currentTarget.src = "/default-profile.svg";
+                                    }}
                                     className="h-10 w-10 shrink-0 rounded-full border border-green-100 bg-green-50 object-cover"
                                   />
                                   <p className="min-w-0 wrap-break-word font-semibold text-gray-900">

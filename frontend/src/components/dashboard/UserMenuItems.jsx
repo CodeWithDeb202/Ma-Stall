@@ -48,8 +48,7 @@ export default function UserMenuItems({ userId = '' }) {
 
   return (
     <DashboardLayout>
-      <main className="min-h-full bg-[#F8FBF7] px-4 py-8 sm:px-6 lg:px-10">
-        <div className="mx-auto max-w-7xl">
+      <main className="min-h-full bg-[#F8FBF7] p-4">
           <header className="mb-8">
             <p className="text-sm font-semibold uppercase tracking-wider text-green-700">
               Fresh Choices
@@ -84,7 +83,6 @@ export default function UserMenuItems({ userId = '' }) {
               ))}
             </div>
           )}
-        </div>
       </main>
     </DashboardLayout>
   );

@@ -174,12 +174,6 @@ export default function UserAccountPage() {
   }
 
   async function handleDeleteAccount() {
-    if (!currentPassword) {
-      setMessage('Enter your current password before deleting your account.');
-      setMessageType('error');
-      return;
-    }
-
     setShowDeleteWarning(false);
 
     setDeleting(true);
@@ -363,8 +357,9 @@ export default function UserAccountPage() {
         <section className="mt-6 rounded-2xl border border-red-200 bg-white p-5 shadow-sm sm:p-8">
           <h2 className="text-lg font-bold text-red-700">Delete account</h2>
           <p className="mt-2 text-sm leading-6 text-[#52715D]">
-            This permanently deletes your user account. You must enter your current password
-            above and confirm the action. This cannot be undone.
+            This permanently deletes your user account. Confirm the warning to continue.
+            Password-based accounts must provide their current password. Google accounts do not need one.
+            This action cannot be undone.
           </p>
           <button
             type="button"
@@ -391,7 +386,7 @@ export default function UserAccountPage() {
       <Warning
         open={showDeleteWarning}
         title="Delete account?"
-        message="Permanently delete your account? This action cannot be undone."
+        message="Permanently delete your account? Password-based accounts require the current password; Google accounts do not. This action cannot be undone."
         confirmText="Delete account"
         cancelText="Cancel"
         onConfirm={handleDeleteAccount}
