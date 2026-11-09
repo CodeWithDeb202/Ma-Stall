@@ -8,17 +8,12 @@ import { useRouter } from 'next/navigation';
 export default function RegisterPage() {
   const router = useRouter();
   const googleButtonRef = useRef(null);
-
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [googleReady, setGoogleReady] = useState(false);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
 
   async function handleGoogleCredential(response) {
     setMessage('');
-    setSuccess(false);
     setLoading(true);
 
     try {
@@ -39,15 +34,10 @@ export default function RegisterPage() {
         method: 'GET',
         cache: 'no-store',
       });
-
       const sessionData = await sessionResponse.json().catch(() => ({}));
 
-      if (
-        !sessionResponse.ok ||
-        !sessionData.authenticated ||
-        sessionData.role !== 'user' ||
-        !sessionData.userId
-      ) {
+      if (!sessionResponse.ok || !sessionData.authenticated ||
+          sessionData.role !== 'user' || !sessionData.userId) {
         setMessage('Google sign-in succeeded, but session verification failed. Please try again.');
         return;
       }
@@ -62,17 +52,13 @@ export default function RegisterPage() {
   }
 
   function initializeGoogleSignIn() {
-    if (
-      !window.google?.accounts?.id ||
-      !googleButtonRef.current ||
-      !process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
-    ) {
-      setMessage('Google Sign-In is not configured correctly.');
+    if (!window.google?.accounts?.id || !googleButtonRef.current ||
+        !process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) {
+      setGoogleReady(false);
       return;
     }
 
     googleButtonRef.current.innerHTML = '';
-
     window.google.accounts.id.initialize({
       client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
       callback: handleGoogleCredential,
@@ -85,59 +71,7 @@ export default function RegisterPage() {
       text: 'continue_with',
       width: 350,
     });
-  }
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-    setMessage('');
-    setSuccess(false);
-
-    const normalizedUsername = username.trim().toLowerCase();
-
-    if (!/^[a-z0-9_]{3,30}$/.test(normalizedUsername)) {
-      setMessage('Username must be 3–30 characters using letters, numbers, or underscores.');
-      return;
-    }
-
-    if (password.length < 8 || password.length > 128) {
-      setMessage('Password must be between 8 and 128 characters.');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setMessage('Passwords do not match.');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const response = await fetch('/api/bridge/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: normalizedUsername,
-          password,
-        }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok || !data.success) {
-        setMessage(data.message || 'Registration failed. Please try again.');
-        return;
-      }
-
-      setSuccess(true);
-      setMessage(data.message || 'Registration successful. You can now log in.');
-      setUsername('');
-      setPassword('');
-      setConfirmPassword('');
-    } catch {
-      setMessage('Unable to connect to the server. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    setGoogleReady(true);
   }
 
   return (
@@ -145,154 +79,49 @@ export default function RegisterPage() {
       <Script
         src="https://accounts.google.com/gsi/client"
         strategy="afterInteractive"
-        onLoad={initializeGoogleSignIn}
-        onError={() => setMessage('Unable to load Google Sign-In. Please try again.')}
+        onReady={initializeGoogleSignIn}
+        onError={() => setGoogleReady(false)}
       />
 
       <section className="w-full max-w-md rounded-2xl border border-[#D8E5D8] bg-white p-6 shadow-sm sm:p-8">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-white px-4 py-2.5 font-semibold text-green-800 transition hover:bg-green-50"
-        >
+        <Link href="/" className="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-white px-4 py-2.5 font-semibold text-green-800 transition hover:bg-green-50">
           ← Back to home
         </Link>
 
         <div className="mt-6">
           <p className="text-sm font-semibold text-[#28784F]">OMM SAI SHRI KRISHNA</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#174D35]">
-            Create your account
-          </h1>
-          <p className="mt-2 text-sm leading-6 text-[#52715D]">
-            Register to manage your daily investment and income records.
-          </p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#174D35]">Create your account</h1>
+          <p className="mt-2 text-sm leading-6 text-[#52715D]">Register to manage your daily investment and income records.</p>
         </div>
 
-        <div className="mt-7">
+        <div className="mt-8 flex min-h-12 justify-center">
           <div
             ref={googleButtonRef}
-            className="flex min-h-10 justify-center"
+            className={googleReady ? '' : 'hidden'}
           />
-
-          <div className="my-5 flex items-center gap-3">
-            <div className="h-px flex-1 bg-[#D8E5D8]" />
-            <span className="text-xs font-medium text-[#829587]">OR REGISTER WITH EMAIL</span>
-            <div className="h-px flex-1 bg-[#D8E5D8]" />
-          </div>
+          {!googleReady && (
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="flex min-h-12 w-full max-w-87.5 cursor-not-allowed items-center justify-center gap-3 rounded-md border border-[#DADCE0] bg-[#F8F9FA] px-4 text-sm font-medium text-[#80868B] opacity-50 shadow-sm"
+            >
+              <span className="text-xl font-bold">G</span>
+              Continue with Google
+            </button>
+          )}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label
-              htmlFor="username"
-              className="mb-2 block text-sm font-semibold text-[#174D35]"
-            >
-              Username
-            </label>
-            <input
-              id="username"
-              name="username"
-              type="text"
-              autoComplete="username"
-              required
-              minLength={3}
-              maxLength={30}
-              pattern="[a-zA-Z0-9_]{3,30}"
-              title="Use 3–30 letters, numbers, or underscores."
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              placeholder="Choose a username"
-              className="min-h-12 w-full rounded-xl border border-[#D8E5D8] bg-white px-4 text-[#173D2B] outline-none transition placeholder:text-[#829587] focus:border-[#176B45] focus:ring-2 focus:ring-[#176B45]/15"
-            />
-            <p className="mt-1.5 text-xs text-[#52715D]">
-              Use 3–30 letters, numbers, or underscores.
-            </p>
-          </div>
+        {message && <p role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">{message}</p>}
 
-          <div>
-            <label
-              htmlFor="password"
-              className="mb-2 block text-sm font-semibold text-[#174D35]"
-            >
-              Password
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              required
-              minLength={8}
-              maxLength={128}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Create a strong password"
-              className="min-h-12 w-full rounded-xl border border-[#D8E5D8] bg-white px-4 text-[#173D2B] outline-none transition placeholder:text-[#829587] focus:border-[#176B45] focus:ring-2 focus:ring-[#176B45]/15"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="confirmPassword"
-              className="mb-2 block text-sm font-semibold text-[#174D35]"
-            >
-              Confirm password
-            </label>
-            <input
-              id="confirmPassword"
-              name="confirmPassword"
-              type="password"
-              autoComplete="new-password"
-              required
-              minLength={8}
-              maxLength={128}
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              placeholder="Enter your password again"
-              className="min-h-12 w-full rounded-xl border border-[#D8E5D8] bg-white px-4 text-[#173D2B] outline-none transition placeholder:text-[#829587] focus:border-[#176B45] focus:ring-2 focus:ring-[#176B45]/15"
-            />
-          </div>
-
-          {message && (
-            <p
-              role="status"
-              aria-live="polite"
-              className={`rounded-lg px-3 py-2.5 text-sm ${
-                success
-                  ? 'border border-[#B8DCC3] bg-[#E8F2E8] text-[#174D35]'
-                  : 'border border-red-200 bg-red-50 text-red-700'
-              }`}
-            >
-              {message}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[#176B45] px-5 py-3 font-semibold text-white transition hover:bg-[#174D35] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loading ? 'Creating account...' : 'Create account'}
-          </button>
-        </form>
-
-        <p className="mt-6 text-center text-sm text-[#52715D]">
+        <p className="mt-8 text-center text-sm text-[#52715D]">
           Already have an account?{' '}
-          <Link
-            href="/auth/login"
-            className="font-semibold text-[#176B45] hover:underline"
-          >
-            User login
-          </Link>
+          <Link href="/auth/login" className="font-semibold text-[#176B45] hover:underline">User login</Link>
         </p>
 
         <p className="mt-3 text-center text-sm text-[#52715D]">
           Are you an administrator?{' '}
-          <Link
-            href="/auth/admin/login"
-            className="font-semibold text-[#176B45] hover:underline"
-          >
-            Admin login
-          </Link>
+          <Link href="/auth/admin/login" className="font-semibold text-[#176B45] hover:underline">Admin login</Link>
         </p>
       </section>
     </main>

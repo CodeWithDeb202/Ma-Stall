@@ -16,15 +16,26 @@ async function proxyRequest(request, method) {
       headers,
     };
 
-    if (method === "PATCH" || method === "DELETE") {
+    if (method === "PATCH") {
       options.data = await request.json();
       headers["Content-Type"] = "application/json";
     }
 
     const backendResponse = await axios(options);
 
+    const responseHeaders = new Headers();
+    const setCookie = backendResponse.headers["set-cookie"];
+
+    if (setCookie) {
+      const cookies = Array.isArray(setCookie) ? setCookie : [setCookie];
+      for (const cookie of cookies) {
+        responseHeaders.append("Set-Cookie", cookie);
+      }
+    }
+
     return NextResponse.json(backendResponse.data ?? {}, {
       status: backendResponse.status,
+      headers: responseHeaders,
     });
   } catch (error) {
     console.error("[AUTH ACCOUNT PROXY ERROR]", {

@@ -22,7 +22,7 @@ export default function DashboardLayout({ children }) {
 
     async function verifyAdmin() {
       try {
-        const response = await fetch('/api/auth/session', {
+        const response = await fetch('/api/auth/session-status', {
           method: 'GET',
           cache: 'no-store',
           credentials: 'include',

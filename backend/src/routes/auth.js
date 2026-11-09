@@ -1,7 +1,13 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
+const Membership = require('../models/Membership');
+const MembershipAttendance = require('../models/MembershipAttendance');
+const MembershipPayment = require('../models/MembershipPayment');
+const MenuItemReview = require('../models/MenuItemReview');
+const cloudinary = require('../config/cloudinary');
 
 const { OAuth2Client } = require('google-auth-library');
 const uploadProfileImage = require('../middleware/uploadProfileImage');
@@ -448,45 +454,59 @@ router.patch('/account', requireAuth, requireUser, async (req, res) => {
   }
 });
 
-// Delete only the authenticated user's own account.
+// Delete the authenticated user's account and all records owned by that user.
 router.delete('/account', requireAuth, requireUser, async (req, res) => {
+  let session;
+
   try {
-    const currentPassword =
-      typeof req.body?.currentPassword === 'string'
-        ? req.body.currentPassword
-        : '';
+    session = await mongoose.startSession();
 
-    const user = await User.findOne({
-      _id: req.auth.userId,
-      role: 'user',
-    }).select('+password');
+    let userNotFound = false;
+    let profileImagePublicId = '';
 
-    if (!user) {
+    await session.withTransaction(async () => {
+      const user = await User.findOne({
+        _id: req.auth.userId,
+        role: 'user',
+      }).session(session);
+
+      if (!user) {
+        userNotFound = true;
+        return;
+      }
+
+      profileImagePublicId = user.profileImagePublicId || '';
+
+      // Delete only records owned by this user.
+      await Membership.deleteMany({ userId: user._id }).session(session);
+      await MembershipAttendance.deleteMany({ userId: user._id }).session(session);
+      await MembershipPayment.deleteMany({ userId: user._id }).session(session);
+      await MenuItemReview.deleteMany({ userId: user._id }).session(session);
+
+      // Delete the user only after their owned records are removed.
+      await User.deleteOne({
+        _id: user._id,
+        role: 'user',
+      }).session(session);
+    });
+
+    if (userNotFound) {
       return res.status(404).json({
         success: false,
         message: 'User account not found.',
       });
     }
 
-    // Google-authenticated users do not have a password.
-    // Password-based users must verify their current password.
-    if (!user.googleId) {
-      if (!currentPassword || currentPassword.length > 128) {
-        return res.status(400).json({
-          success: false,
-          message: 'Enter your current password to delete your account.',
+    // Remove only this user's uploaded profile image.
+    if (profileImagePublicId) {
+      try {
+        await cloudinary.uploader.destroy(profileImagePublicId, {
+          resource_type: 'image',
         });
-      }
-
-      if (!user.password || !(await bcrypt.compare(currentPassword, user.password))) {
-        return res.status(401).json({
-          success: false,
-          message: 'Current password is incorrect.',
-        });
+      } catch (imageError) {
+        console.error('[AUTH ACCOUNT DELETE] Profile image cleanup failed:', imageError.message);
       }
     }
-
-    await User.deleteOne({ _id: user._id, role: 'user' });
 
     const isProduction = process.env.NODE_ENV === 'production';
     res.clearCookie('ma_stall_session', {
@@ -498,7 +518,7 @@ router.delete('/account', requireAuth, requireUser, async (req, res) => {
 
     return res.json({
       success: true,
-      message: 'Your account has been deleted.',
+      message: 'Your account and personal data have been deleted.',
     });
   } catch (error) {
     console.error('[AUTH ACCOUNT DELETE] Failed:', error.message);
@@ -506,7 +526,10 @@ router.delete('/account', requireAuth, requireUser, async (req, res) => {
       success: false,
       message: 'Unable to delete your account right now.',
     });
+  } finally {
+    if (session) {
+      await session.endSession();
+    }
   }
 });
-
 module.exports = router;
